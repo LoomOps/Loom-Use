@@ -1,0 +1,283 @@
+#!/usr/bin/env python3
+"""Loom Use: user-scoped connection profiles and explicit client lifecycle."""
+import argparse, contextlib, fcntl, getpass, hashlib, json, os, re, shlex, shutil
+import subprocess, sys, tempfile, tomllib, uuid, functools
+from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlsplit
+from urllib.request import Request, build_opener
+
+ROOT=Path(__file__).resolve().parent
+sys.path.insert(0,str(ROOT/'clients'))
+from setup import atomic_private, private_directory, config_text, verify
+from headers import read_token
+from stdio import NoRedirect
+import releases, codex_runtime
+
+
+def endpoint(value):
+    p=urlsplit(value)
+    if (p.scheme not in ('http','https') or not p.hostname or p.username or p.password
+        or p.query or p.fragment or p.path not in ('','/','/mcp')
+        or (p.scheme=='http' and p.hostname not in ('127.0.0.1','localhost','::1'))):
+        raise ValueError('Use a private HTTPS Loom origin or /mcp URL')
+    return value.rstrip('/') if p.path=='/mcp' else value.rstrip('/')+'/mcp'
+
+
+def resolve(value):
+    target=endpoint(value)
+    if urlsplit(value).path=='/mcp': return target
+    # Public Gateway discloses its private origin without operational access.
+    try:
+        with build_opener(NoRedirect()).open(Request(value.rstrip('/')+'/api/session'),timeout=5) as r:
+            session=json.loads(r.read(65536))
+        if session.get('mode')=='invite' and session.get('dashboard'):
+            proposed=endpoint(session['dashboard'])
+            if urlsplit(proposed).hostname != urlsplit(value).hostname:
+                raise ValueError('Gateway advertises another hostname; provide its private URL explicitly')
+            return proposed
+    except (HTTPError,URLError,TimeoutError,json.JSONDecodeError): pass
+    return target
+
+
+def local_identity():
+    try:
+        r=subprocess.run(['tailscale','status','--json'],capture_output=True,text=True,timeout=4,check=True)
+        d=json.loads(r.stdout)
+        return {'state':d.get('BackendState'),'tagged':bool(d.get('Self',{}).get('Tags'))}
+    except (OSError,subprocess.SubprocessError,ValueError): return {'state':'unknown','tagged':None}
+
+
+def checked_name(name):
+    if not re.fullmatch('[A-Za-z0-9_-]{1,80}',name):raise ValueError('Use a simple connection name')
+    return name
+
+
+def transactional(method):
+    @functools.wraps(method)
+    def run(self,*args,**kwargs):
+        files={p:p.read_bytes() if p.exists() else None for p in (self.config,self.index)}
+        link=self.skill_root/'loom-use'; old_link=os.readlink(link) if link.is_symlink() else None
+        try:return method(self,*args,**kwargs)
+        except BaseException:
+            for p,data in files.items():
+                if data is None:p.unlink(missing_ok=True)
+                else:atomic_private(p,data.decode())
+            if link.is_symlink():
+                if old_link is None:link.unlink()
+                elif os.readlink(link)!=old_link:link.unlink();link.symlink_to(old_link)
+            raise
+    return run
+
+
+class Client:
+    def __init__(self, home=None, skill_root=None):
+        self.home=Path(home or os.environ.get('CODEX_HOME',Path.home()/'.codex')).expanduser().absolute()
+        self.root=private_directory(self.home/'loom-use')
+        self.config=self.home/'config.toml'
+        self.skill_root=Path(skill_root or Path.home()/'.agents/skills')
+        self.index=self.root/'connections.json'
+
+    @contextlib.contextmanager
+    def lock(self):
+        fd=os.open(self.root/'.lock',os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
+        with os.fdopen(fd,'w') as stream:
+            fcntl.flock(stream,fcntl.LOCK_EX);yield
+
+    def load(self):
+        return json.loads(self.index.read_text()) if self.index.exists() else {'schema':1,'active':None,'connections':{}}
+
+    def save(self,state):atomic_private(self.index,json.dumps(state,indent=2)+'\n')
+
+    def probe(self,url,credential=None):
+        with tempfile.TemporaryDirectory(dir=self.root) as t:
+            folder=Path(t); value={'endpoint':url,'authentication':'tailscale'}
+            if credential: value={'endpoint':url,'credential':str(credential)}
+            atomic_private(folder/'client.json',json.dumps(value))
+            return verify(folder)
+
+    def adopt(self,name,url):
+        """Find a former static helper only for the exact configured endpoint."""
+        if not self.config.exists(): return None
+        existing=tomllib.loads(self.config.read_text()).get('mcp_servers',{}).get(name,{})
+        if existing.get('url')!=url: return None
+        args=shlex.split(existing.get('http_headers_helper',''))
+        if len(args)!=3 or Path(args[1]).name!='headers.py': return None
+        credential=Path(args[2])
+        read_token(credential)  # permission and ownership check; never print
+        return credential
+
+    def entry(self,profile):
+        value={'url':profile['endpoint']}
+        if profile.get('credential'):
+            value['http_headers_helper']=shlex.join([sys.executable,str(Path(profile['release_path'])/'clients/headers.py'),profile['credential']])
+        return value
+
+    def register(self,name,profile,replace=False):
+        if self.config.is_symlink():raise ValueError('Refusing a symlink Codex config')
+        original=self.config.read_text() if self.config.exists() else ''
+        current=tomllib.loads(original).get('mcp_servers',{}).get(name)
+        if replace and current and current.get('url')!=profile['endpoint']:
+            # config_text protects endpoint changes; remove only the owned table first.
+            original_for_edit=remove_table(original,name)
+        else: original_for_edit=original
+        updated=config_text(original_for_edit,name,self.entry(profile))
+        if (self.config.read_text() if self.config.exists() else '')!=original:raise ValueError('Configuration changed concurrently')
+        if original:atomic_private(self.config.with_name('config.toml.loom-use-backup'),original)
+        atomic_private(self.config,updated)
+
+    def skill(self,release):
+        target=Path(release)/'skills/loom-use'
+        if not (target/'SKILL.md').is_file():raise ValueError('Skill missing')
+        self.skill_root.mkdir(parents=True,exist_ok=True)
+        link=self.skill_root/'loom-use'
+        if link.exists() and not link.is_symlink():raise ValueError('Existing custom Skill retained; choose another skill root')
+        if link.is_symlink():
+            old=link.resolve(strict=False)
+            if not (old.is_relative_to(self.root) or old.is_relative_to(Path('/loom/loom_use')) or old==ROOT/'skills/loom-use'):
+                raise ValueError('Unmanaged Skill link retained')
+        temporary=link.with_name('.loom-use-new')
+        if temporary.exists() or temporary.is_symlink():raise ValueError('Pending Skill change exists')
+        temporary.symlink_to(target);os.replace(temporary,link)
+
+    @transactional
+    def connect(self,url,name='loom-use',token=None,authentication='auto',cwd=None,thread_id=None):
+        name=checked_name(name);cwd=Path(cwd or Path.cwd())
+        if not cwd.is_dir():raise ValueError('Project directory does not exist')
+        url=resolve(url);state=self.load();old=state['connections'].get(name)
+        if old and old['endpoint']!=url:raise ValueError('Connection name targets another Loom; use --name then connections use')
+        credential=Path(old['credential']) if old and old.get('credential') else self.adopt(name,url)
+        temporary=None
+        try:
+            if token is not None:
+                temporary=tempfile.TemporaryDirectory(dir=self.root);credential=Path(temporary.name)/'credential.json'
+                atomic_private(credential,json.dumps({'token':token}))
+            if credential:
+                report=self.probe(url,credential)
+            else:
+                if authentication=='token' or (authentication=='auto' and local_identity()['tagged']):
+                    raise PermissionError('admin_token_required')
+                report=self.probe(url)
+            lock=report['manifest'].get('client_release')
+            if not lock:raise ValueError('Server needs a Loom release with independent client handoff')
+            release=releases.install(lock,self.root/'releases')
+            folder=private_directory(self.root/'profiles'/name)
+            if temporary:
+                destination=folder/('credential-'+uuid.uuid4().hex+'.json');atomic_private(destination,credential.read_text());credential=destination
+            profile={'endpoint':url,'credential':str(credential) if credential else None,
+                     'authentication':'token' if credential else 'tailscale','machine_id':report['machine_id'],
+                     'release_path':str(release),'release':lock,'revision':report['manifest']['revision']}
+            # Refuse name collisions before replacing a shared Skill link.
+            self.register(name,profile)
+            if state['active']==name and name!='loom-use':self.register('loom-use',profile,replace=True)
+            self.skill(release)
+            state['connections'][name]=profile
+            if state['active'] is None:
+                if name!='loom-use':self.register('loom-use',profile)
+                state['active']=name
+            self.save(state)
+            return {'connection':name,'endpoint':url,'server':report,'runtime':codex_runtime.reconnect(name,cwd,thread_id)}
+        finally:
+            if temporary:temporary.cleanup()
+
+    def doctor(self,name,cwd,thread_id=None,refresh=False):
+        state=self.load();name=checked_name(name or state['active'] or 'loom-use');p=state['connections'][name]
+        report=self.probe(p['endpoint'],Path(p['credential']) if p.get('credential') else None)
+        if report['machine_id']!=p['machine_id']:raise ValueError('Endpoint now identifies another Loom; reconnect explicitly')
+        configured=tomllib.loads(self.config.read_text()).get('mcp_servers',{}).get('loom-use' if state['active']==name else name)
+        registration='loom-use' if state['active']==name else name
+        inactive_default=name=='loom-use' and state['active']!=name
+        if configured!=self.entry(p) and not inactive_default:raise ValueError('Codex registration differs from connection profile')
+        if inactive_default:refresh=False
+        runtime=codex_runtime.reconnect(registration,cwd,thread_id) if refresh else {'status':'unverified'}
+        return {'connection':name,'transport':report,'client_update_required':report['manifest'].get('client_release')!=p['release'],
+                'guide_update_required':report['manifest']['revision']!=p.get('revision'),'runtime':runtime,'registration':'inactive_profile' if inactive_default else 'configured'}
+
+    @transactional
+    def update(self,name,cwd,thread_id=None):
+        state=self.load();name=name or state['active'];old=state['connections'][name]
+        report=self.probe(old['endpoint'],Path(old['credential']) if old.get('credential') else None)
+        if report['machine_id']!=old['machine_id']:raise ValueError('Server identity changed')
+        lock=report['manifest']['client_release'];release=releases.install(lock,self.root/'releases')
+        new={**old,'release':lock,'release_path':str(release),'revision':report['manifest']['revision']}
+        registration='loom-use' if state['active']==name else name
+        if not (name=='loom-use' and state['active']!=name):self.register(registration,new)
+        if name!='loom-use' and registration!=name:self.register(name,new)
+        self.skill(release)
+        state['connections'][name]=new;self.save(state)
+        runtime=({'status':'unverified','reason':'inactive_profile'} if name=='loom-use' and state['active']!=name else codex_runtime.reconnect(registration,cwd,thread_id))
+        # Pending app access is not a failed transport update. On explicit thread failure
+        # retain the previous profile/config so the operator can recover without secrets.
+        return {'updated':old['release']!=lock,'connection':name,'runtime':runtime,'previous_release_retained':old['release']['version']}
+
+    @transactional
+    def use(self,name,cwd,thread_id=None):
+        state=self.load();p=state['connections'][checked_name(name)]
+        report=self.probe(p['endpoint'],Path(p['credential']) if p.get('credential') else None)
+        if report['machine_id']!=p['machine_id']:raise ValueError('Server identity changed')
+        releases.verify(Path(p['release_path']),p['release'])
+        self.register('loom-use',p,replace=True);self.skill(p['release_path'])
+        state['active']=name;self.save(state)
+        return {'active':name,'endpoint':p['endpoint'],'runtime':codex_runtime.reconnect('loom-use',cwd,thread_id)}
+
+
+def remove_table(text,name):
+    parsed=tomllib.loads(text);existing=parsed.get('mcp_servers',{}).get(name)
+    if existing is None:return text
+    # Reuse the parser-backed table replacement, then remove its canonical table.
+    normalized=config_text(text,name,{'url':existing.get('url')})
+    suffix='\n[mcp_servers.'+json.dumps(name)+']\nurl = '+json.dumps(existing.get('url'))+'\n'
+    if not normalized.endswith(suffix):raise ValueError('Cannot safely remove connection')
+    result=normalized[:-len(suffix)]+'\n';expected=json.loads(json.dumps(parsed));del expected['mcp_servers'][name]
+    actual=tomllib.loads(result)
+    if not expected['mcp_servers']:expected.pop('mcp_servers');actual.pop('mcp_servers',None)
+    if actual!=expected:raise ValueError('Cannot safely remove nested connection')
+    return result
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--home',type=Path);parser.add_argument('--skill-root',type=Path)
+    sub=parser.add_subparsers(dest='action',required=True)
+    connect=sub.add_parser('connect');connect.add_argument('url');connect.add_argument('--name',default='loom-use');connect.add_argument('--authentication',choices=['auto','token','tailscale'],default='auto')
+    for name in ('doctor','update','reconnect'):
+        p=sub.add_parser(name);p.add_argument('--name')
+    for p in [connect,*[sub.choices[n] for n in ('doctor','update','reconnect')]]:
+        p.add_argument('--cwd',type=Path,default=Path.cwd());p.add_argument('--thread-id',default=os.environ.get('CODEX_THREAD_ID'))
+    connections=sub.add_parser('connections');connections.add_argument('operation',choices=['list','use','disconnect']);connections.add_argument('name',nargs='?')
+    a=parser.parse_args();client=Client(a.home,a.skill_root)
+    with client.lock():
+        if a.action=='connect':
+            try:result=client.connect(a.url,a.name,authentication=a.authentication,cwd=a.cwd,thread_id=a.thread_id)
+            except (PermissionError,HTTPError) as error:
+                if isinstance(error,HTTPError) and error.code not in (401,403):raise
+                if isinstance(error,PermissionError) and str(error)!='admin_token_required':raise
+                if a.authentication=='tailscale':raise
+                if not sys.stdin.isatty():raise PermissionError('Admin token required: rerun interactively; never put it in chat or arguments')
+                print('Obtain a token from Dashboard → Tailscale → Agent Tokens (Admin).',file=sys.stderr)
+                token=getpass.getpass('Agent token (hidden): ')
+                result=client.connect(a.url,a.name,token=token,cwd=a.cwd,thread_id=a.thread_id)
+        elif a.action=='update':result=client.update(a.name,a.cwd,a.thread_id)
+        elif a.action in ('doctor','reconnect'):result=client.doctor(a.name,a.cwd,a.thread_id,refresh=a.action=='reconnect')
+        elif a.operation=='list':
+            state=client.load();result={'active':state['active'],'connections':{n:{k:v for k,v in p.items() if k not in ('credential','release_path')} for n,p in state['connections'].items()}}
+        elif a.operation=='use':result=client.use(a.name,Path.cwd(),os.environ.get('CODEX_THREAD_ID'))
+        else:
+            state=client.load();name=checked_name(a.name)
+            if name not in state['connections']:raise ValueError('Unknown connection')
+            text=client.config.read_text()
+            if name!='loom-use' or state['active']==name:text=remove_table(text,name)
+            if state['active']==name:text=remove_table(text,'loom-use');state['active']=None
+            atomic_private(client.config,text);del state['connections'][name];client.save(state)
+            result={'disconnected':name,'credential_retained':True,'server_token_not_revoked':True}
+    print(json.dumps(result,indent=2))
+    return 0
+
+if __name__=='__main__':
+    try:raise SystemExit(main())
+    except Exception as error:
+        # HTTP bodies and subprocess output may contain secrets: never echo them.
+        if isinstance(error,HTTPError):message=f'HTTP {error.code}: check access or token; no credentials changed'
+        elif type(error) in (ValueError,PermissionError,KeyError):message=str(error)
+        else:message=type(error).__name__+': check network, local paths and permissions'
+        print(json.dumps({'status':'incomplete','error':message}),file=sys.stderr);raise SystemExit(1)

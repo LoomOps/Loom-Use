@@ -1,0 +1,29 @@
+name: Server contract
+on:
+  workflow_dispatch:
+    inputs:
+      loom_ref:
+        description: Loom commit or release to verify
+        required: true
+        default: main
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: LoomOps/Loom
+          ref: ${{ inputs.loom_ref }}
+          path: .server
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install jsonschema==4.23.0 PyYAML==6.0.2
+      - name: Test this client artifact with the selected server
+        run: |
+          python3 package.py --output /tmp/client
+          cp /tmp/client/client-release.json .server/loom_use/client-release.json
+          cd .server
+          python3 deploy/client_release.py --destination /tmp/contract --archive /tmp/client/loom-use-*.zip
+          LOOM_USE_TEST_CACHE=/tmp/contract PYTHONPATH=ops:tests/ops python3 -m unittest test_client_setup test_onboarding test_api_contract -v
