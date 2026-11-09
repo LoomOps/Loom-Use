@@ -3,12 +3,12 @@
 | Block | Contract | Regression scope |
 |---|---|---|
 | release | Trusted repository, exact version/checksum, immutable directories | Wrong hash, traversal, duplicate, symlink, cache tamper |
-| profiles | Named endpoints, isolated credentials, atomic configuration | Repeated setup, collision, switch failure, unrelated settings |
-| auth | Real Tailscale user or Admin-issued Loom Agent Token | Tagged client, rejected token, no leakage, exact-endpoint adoption |
+| profiles | Named endpoints, isolated credentials, atomic configuration | Repeated setup, collision, switch failure, unrelated settings, concurrent writer preservation during rollback |
+| auth | Real Tailscale user or Admin-issued Loom Agent Token | Tagged client, rejected token, no leakage, exact-endpoint adoption, explicit Tailscale overriding saved headers |
 | Codex | Existing process refresh; thread status AND live calls | Real Unix-socket HTTP Upgrade, masked frames, fragmented replies/ping, direct and symlink sockets, broken/loop/foreign-owner selectors, ambiguous fallback, refused connection, missing cwd/client/socket, optional thread refresh, timeout, cached catalog, actual tool error |
 | update | Server declaration, per-profile release selection | No change, version change, download failure, preserved token |
 | SSH | Local detection, personal remote account, strict host keys | Same host without account, wrong host/user, disabled access, live username check, optional Skill rollback |
-| server contract | MCP initialize/list/status/guide | Loom CI tests the released client against its actual HTTP server |
+| server contract | MCP initialize/list/status/guide, JSON/SSE response identity/envelope | Loom CI tests the released client against its actual HTTP server |
 
 Unit tests cannot prove a particular desktop application's control socket is
 available, nor remote TLS/Sharing or reboot behavior. Record those separately.

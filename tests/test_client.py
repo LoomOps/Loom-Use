@@ -118,6 +118,46 @@ class ClientTests(unittest.TestCase):
  def test_release_build_is_deterministic(self):
   self.assertEqual(package.build(self.root/'again'),self.lock)
 
+ def test_explicit_tailscale_drops_saved_header_but_preserves_secret(self):
+  self.connect();secret=Path(self.client.load()['connections']['loom-use']['credential'])
+  with patch.object(self.client,'probe',return_value=self.report) as probe:
+   self.client.connect('https://one.test',authentication='tailscale',cwd=self.root)
+   self.assertEqual(probe.call_args.args,('https://one.test/mcp',))
+  self.assertTrue(secret.exists())
+  self.assertEqual(tomllib.loads(self.client.config.read_text())['mcp_servers']['loom-use'],{'url':'https://one.test/mcp'})
+  with self.assertRaisesRegex(ValueError,'must not carry'):
+   self.client.connect('https://one.test',authentication='tailscale',token='fixture',cwd=self.root)
+
+ def test_connect_rejects_replaced_server_before_installing(self):
+  self.connect();before=self.client.index.read_bytes()
+  with patch.object(self.client,'probe',return_value={**self.report,'machine_id':'replacement'}),patch.object(use.releases,'install') as install:
+   with self.assertRaisesRegex(ValueError,'identity'):self.client.connect('https://one.test',cwd=self.root)
+   install.assert_not_called()
+  self.assertEqual(before,self.client.index.read_bytes())
+
+ def test_rollback_preserves_concurrent_config_before_and_after_own_write(self):
+  self.connect()
+  concurrent='model="another-writer"\n'
+  with patch.object(self.client,'probe',return_value=self.report):
+   def raced(*args,**kwargs):
+    self.client.config.write_text(concurrent)
+    raise ValueError('Configuration changed concurrently')
+   with patch.object(self.client,'register',side_effect=raced):
+    with self.assertRaises(ValueError):self.client.connect('https://one.test',cwd=self.root)
+   self.assertEqual(self.client.config.read_text(),concurrent)
+   with patch.object(self.client,'skill',side_effect=raced):
+    with self.assertRaises(ValueError):self.client.connect('https://one.test',cwd=self.root)
+   self.assertEqual(self.client.config.read_text(),concurrent)
+
+ def test_failed_connect_preserves_concurrently_replaced_skill_link(self):
+  self.connect();link=self.client.skill_root/'loom-use'
+  def raced(state):
+   link.unlink();link.symlink_to(self.root/'external-skill')
+   raise ValueError('later failure')
+  with patch.object(self.client,'probe',return_value=self.report),patch.object(self.client,'save',side_effect=raced):
+   with self.assertRaises(ValueError):self.client.connect('https://one.test',cwd=self.root)
+  self.assertEqual(os.readlink(link),str(self.root/'external-skill'))
+
 class RuntimeTests(unittest.TestCase):
  def test_missing_cwd_and_no_binary_are_pending(self):
   self.assertEqual(codex_runtime.reconnect('loom-use','/not-existing-loom-directory')['reason'],'project_directory_missing')

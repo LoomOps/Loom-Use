@@ -1,0 +1,25 @@
+import email.message, io, json, sys, tempfile, unittest
+from pathlib import Path
+from unittest.mock import patch
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'clients'))
+from stdio import OpsTransport
+from headers import read_token
+
+class TransportTests(unittest.TestCase):
+ def test_response_envelope_json_and_sse(self):
+  with tempfile.TemporaryDirectory() as t:
+   path=Path(t)/'client.json';path.write_text(json.dumps({'endpoint':'http://localhost/mcp','authentication':'tailscale'}))
+   client=OpsTransport(path)
+   for media in ('application/json','text/event-stream'):
+    for reply,valid in [({'jsonrpc':'2.0','id':1,'result':{}},True),({'jsonrpc':'2.0','id':2,'result':{}},False),({'id':1,'result':{}},False),({'jsonrpc':'2.0','id':1,'result':{},'error':{}},False),([],False)]:
+     raw=json.dumps(reply).encode()
+     if media=='text/event-stream':raw=b'data: '+raw+b'\n\n'
+     response=io.BytesIO(raw);response.status=200;response.headers=email.message.Message();response.headers['Content-Type']=media
+     with self.subTest(media=media,reply=reply),patch.object(client.opener,'open',return_value=response):
+      if valid:self.assertEqual(client.rpc({'jsonrpc':'2.0','id':1,'method':'tools/list'}),reply)
+      else:
+       with self.assertRaises(ValueError):client.rpc({'jsonrpc':'2.0','id':1,'method':'tools/list'})
+ def test_nonobject_credentials_fail_cleanly(self):
+  with tempfile.TemporaryDirectory() as t:
+   p=Path(t)/'credential.json';p.write_text('[]');p.chmod(0o600)
+   with self.assertRaisesRegex(ValueError,'Invalid credential'):read_token(p)

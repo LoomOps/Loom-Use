@@ -49,3 +49,5 @@ source package; it contains this same INSTALL.md. Never silently follow main.
    SSH account; otherwise reuse existing authorized SSH or direct the user to Admin
    enablement. Run `ssh doctor` only for the intended remote connection. Read
    [SSH](docs/ssh.md). Never request an MCP token as an SSH credential.
+
+Explicit `--authentication tailscale` removes the profile’s Bearer header without deleting its saved credential file. It never silently falls back after a rejected token. Reconnecting an existing profile also checks the server machine identity; disconnect that profile explicitly before binding a replacement server. Failed changes roll back only files/links still matching this operation’s writes, preserving concurrent edits by other tools.

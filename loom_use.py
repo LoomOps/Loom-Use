@@ -59,16 +59,22 @@ def transactional(method):
     def run(self,*args,**kwargs):
         files={p:p.read_bytes() if p.exists() else None for p in (self.config,self.index)}
         links={self.skill_root/n:os.readlink(self.skill_root/n) if (self.skill_root/n).is_symlink() else None for n in ('loom-use','loom-ssh')}
+        previous=getattr(self,'_transaction_writes',None)
+        writes=self._transaction_writes={}
         try:return method(self,*args,**kwargs)
         except BaseException:
             for p,data in files.items():
-                if data is None:p.unlink(missing_ok=True)
+                # Never undo another writer's change, including a detected race
+                # before this transaction wrote anything.
+                if p not in writes or p.is_symlink() or not p.is_file() or p.read_bytes()!=writes[p]:continue
+                if data is None:p.unlink()
                 else:atomic_private(p,data.decode())
             for link,old_link in links.items():
-                if link.is_symlink():
-                    if old_link is None:link.unlink()
-                    elif os.readlink(link)!=old_link:link.unlink();link.symlink_to(old_link)
+                if link in writes and link.is_symlink() and os.readlink(link)==writes[link]:
+                    link.unlink()
+                    if old_link is not None:link.symlink_to(old_link)
             raise
+        finally:self._transaction_writes=previous
     return run
 
 
@@ -89,7 +95,11 @@ class Client:
     def load(self):
         return json.loads(self.index.read_text()) if self.index.exists() else {'schema':1,'active':None,'connections':{}}
 
-    def save(self,state):atomic_private(self.index,json.dumps(state,indent=2)+'\n')
+    def write(self,path,text):
+        atomic_private(path,text)
+        if getattr(self,'_transaction_writes',None) is not None:self._transaction_writes[path]=text.encode()
+
+    def save(self,state):self.write(self.index,json.dumps(state,indent=2)+'\n')
 
     def probe(self,url,credential=None):
         with tempfile.TemporaryDirectory(dir=self.root) as t:
@@ -126,7 +136,7 @@ class Client:
         updated=config_text(original_for_edit,name,self.entry(profile))
         if (self.config.read_text() if self.config.exists() else '')!=original:raise ValueError('Configuration changed concurrently')
         if original:atomic_private(self.config.with_name('config.toml.loom-use-backup'),original)
-        atomic_private(self.config,updated)
+        self.write(self.config,updated)
 
     def skill(self,release,name='loom-use'):
         if name not in ('loom-use','loom-ssh'):raise ValueError('Unknown Skill')
@@ -142,6 +152,7 @@ class Client:
         temporary=link.with_name('.'+name+'-new')
         if temporary.exists() or temporary.is_symlink():raise ValueError('Pending Skill change exists')
         temporary.symlink_to(target);os.replace(temporary,link)
+        if getattr(self,'_transaction_writes',None) is not None:self._transaction_writes[link]=str(target)
         if name=='loom-use' and (self.skill_root/'loom-ssh').is_symlink():self.skill(release,'loom-ssh')
 
     @transactional
@@ -164,7 +175,9 @@ class Client:
         if not cwd.is_dir():raise ValueError('Project directory does not exist')
         url=resolve(url);state=self.load();old=state['connections'].get(name)
         if old and old['endpoint']!=url:raise ValueError('Connection name targets another Loom; use --name then connections use')
-        credential=Path(old['credential']) if old and old.get('credential') else self.adopt(name,url)
+        if authentication not in ('auto','token','tailscale'):raise ValueError('Unknown authentication mode')
+        if authentication=='tailscale' and token is not None:raise ValueError('Tailscale mode must not carry a token')
+        credential=None if authentication=='tailscale' else (Path(old['credential']) if old and old.get('credential') else self.adopt(name,url))
         temporary=None
         try:
             if token is not None:
@@ -176,6 +189,7 @@ class Client:
                 if authentication=='token' or (authentication=='auto' and local_identity()['tagged']):
                     raise PermissionError('admin_token_required')
                 report=self.probe(url)
+            if old and old['machine_id']!=report['machine_id']:raise ValueError('Server identity changed; disconnect the old profile before rebinding')
             lock=report['manifest'].get('client_release')
             if not lock:raise ValueError('Server needs a Loom release with independent client handoff')
             release=releases.install(lock,self.root/'releases')
