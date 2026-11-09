@@ -37,3 +37,13 @@ IDs and Loom revision metadata: these must pass through unchanged, not become a
 successful result or lose their correlation fields. External integration runners
 can pair current Loom and Loom Use source with their adapters; this is separate
 from testing an immutable published client release.
+
+## Research Tools and administrator migrations
+
+The transport remains generic across the six groups: optional components Tool
+registration/discovery and exact Tool pins pass through without rewriting source,
+credentials or Job arguments. Server guides own these schemas. Administrator
+migration plans/scripts are separate from client update/guide refresh: a client
+never executes them, chooses rebuild, or registers operational research software
+as a side effect of connection. Use immutable release checksums and the selected
+server's declaration; no new client code is required for these additive actions.
