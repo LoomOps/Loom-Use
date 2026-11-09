@@ -13,7 +13,7 @@ Python 3.11+ and Codex are required. Do not use sudo to configure the client.
 3. Run `python3 loom_use.py connect <address>` in this checkout. The script detects
    existing configuration, validates the server, obtains its exact required client
    release, installs the Skill and registers Streamable HTTP as `loom-use`.
-   Resident/tagged clients use an Admin token. The hidden prompt explains where to
+   Resident/tagged clients use an Admin-issued Loom Agent Token. The hidden prompt explains where to
    obtain it. Do not issue it via sudo or copy a server owner credential.
 4. The command attempts to refresh the **running** Codex app-server and Skills.
    Pass `--thread-id <current-thread>` if the client does not provide CODEX_THREAD_ID.

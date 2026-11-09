@@ -272,7 +272,7 @@ def main():
                 if isinstance(error,HTTPError) and error.code not in (401,403):raise
                 if isinstance(error,PermissionError) and str(error)!='admin_token_required':raise
                 if a.authentication=='tailscale':raise
-                if not sys.stdin.isatty():raise PermissionError('Admin token required: rerun interactively; never put it in chat or arguments')
+                if not sys.stdin.isatty():raise PermissionError('Loom Agent Token required: ask an Admin to issue one in Dashboard > Tailscale > Agent Tokens, then rerun this command in your terminal for hidden input; never put it in chat or arguments')
                 print('Obtain a token from Dashboard → Tailscale → Agent Tokens (Admin).',file=sys.stderr)
                 token=getpass.getpass('Agent token (hidden): ')
                 result=client.connect(a.url,a.name,token=token,cwd=a.cwd,thread_id=a.thread_id)

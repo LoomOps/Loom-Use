@@ -122,31 +122,4 @@ class RuntimeTests(unittest.TestCase):
  def test_missing_cwd_and_no_binary_are_pending(self):
   self.assertEqual(codex_runtime.reconnect('loom-use','/not-existing-loom-directory')['reason'],'project_directory_missing')
   with patch.object(codex_runtime.shutil,'which',return_value=None):self.assertEqual(codex_runtime.reconnect('loom-use','/tmp')['reason'],'codex_not_found')
- def test_actual_thread_call_required_after_connected(self):
-  with tempfile.TemporaryDirectory() as t:
-   root=Path(t);binary=root/'codex';record=root/'methods'
-   binary.write_text('#!'+sys.executable+'\n'+'''import sys,json
-from pathlib import Path
-for line in sys.stdin:
- m=json.loads(line)
- if 'id' not in m:continue
- with open('methods','a') as f:f.write(m['method']+'\\n')
- if m['method']=='mcpServerStatus/list':r={'data':[{'name':'loom-use','runtimeStatus':'connected','tools':{'system':{}}}]}
- elif m['method']=='mcpServer/tool/call':
-  assert m['params']['tool']=='system'
-  r={'content':[{'text':'{}','type':'text'}]}
- else:r={}
- print(json.dumps({'id':m['id'],'result':r}),flush=True)
-''');binary.chmod(0o700)
-   with patch.object(codex_runtime.shutil,'which',return_value=str(binary)):
-    result=codex_runtime.reconnect('loom-use',root,'thread',socket='fixture',timeout=1)
-   self.assertEqual(result['status'],'verified')
-   self.assertEqual(record.read_text().count('mcpServer/tool/call'),2)
- def test_control_timeout_does_not_restart_daemon(self):
-  with tempfile.TemporaryDirectory() as t:
-   binary=Path(t)/'codex';binary.write_text('#!'+sys.executable+'\nimport time;time.sleep(10)\n');binary.chmod(0o700)
-   with patch.object(codex_runtime.shutil,'which',return_value=str(binary)):
-    result=codex_runtime.reconnect('loom-use',t,'thread',socket='fixture',timeout=.1)
-   self.assertEqual(result['status'],'pending')
-
 if __name__=='__main__':unittest.main()

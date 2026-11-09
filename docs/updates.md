@@ -23,3 +23,8 @@ Do not download or execute a URL supplied by an error message or Job output.
 Guides remain server-owned. A guide-only change requires rereading relevant guides,
 not reinstalling client code. Build-only updates do not require all guides again.
 Existing Jobs are unaffected. No agent context is rewritten by the updater.
+
+Alpha.3 fixes existing Codex control-socket refresh using WebSocket-over-Unix.
+It connects only to a current-user socket, prefers CODEX_HOME/app-server-control,
+and does not start or restart a daemon. Updating the client preserves connection
+profiles and tokens. A missing current-thread binding remains pending.

@@ -1,5 +1,9 @@
 """Bounded reconnection to an existing Codex app-server; never start a daemon."""
-import json, os, selectors, shutil, subprocess, time
+import os, shutil
+try:
+    from .websocket_unix import Connection
+except ImportError:
+    from websocket_unix import Connection
 from pathlib import Path
 
 
@@ -8,37 +12,22 @@ def reconnect(name, cwd, thread_id=None, socket=None, timeout=6):
     if not cwd.is_dir(): return {'status':'pending','reason':'project_directory_missing','cwd':str(cwd)}
     binary = shutil.which('codex')
     if not binary: return {'status':'pending','reason':'codex_not_found'}
-    # A control socket or application-supported API is required. Do not launch
-    # a standalone app-server and mistake its catalog for the user's thread.
+    # Use the running server only. Prefer its canonical user-owned control path.
     if socket is None:
-        candidates = list(Path(f'/tmp/codex-daemon-{os.getuid()}').glob('*'))
-        candidates = [p for p in candidates if p.is_socket() and p.stat().st_uid == os.getuid()]
-        if len(candidates) != 1: return {'status':'pending','reason':'app_server_control_unavailable'}
-        socket = str(candidates[0])
-    process = subprocess.Popen([binary,'app-server','proxy','--sock',str(socket)],cwd=cwd,
-                               stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
-    selector=selectors.DefaultSelector(); selector.register(process.stdout,selectors.EVENT_READ)
-    buffer=b''
-    def rpc(id, method, params):
-        nonlocal buffer
-        process.stdin.write((json.dumps({'id':id,'method':method,'params':params})+'\n').encode());process.stdin.flush()
-        end=time.monotonic()+timeout
-        while time.monotonic()<end:
-            for key,_ in selector.select(min(.25,max(0,end-time.monotonic()))):
-                chunk=os.read(key.fileobj.fileno(),65536)
-                if not chunk: raise OSError('App server disconnected')
-                buffer+=chunk
-                if len(buffer)>4*1024*1024: raise ValueError('App server response limit')
-                while b'\n' in buffer:
-                    line,buffer=buffer.split(b'\n',1)
-                    response=json.loads(line)
-                    if response.get('id')==id:
-                        if 'error' in response: raise ValueError('App server rejected request')
-                        return response['result']
-        raise TimeoutError()
+        home=Path(os.environ.get('CODEX_HOME',str(Path.home()/'.codex')))
+        canonical=home/'app-server-control/app-server-control.sock'
+        candidates=[canonical] if canonical.is_socket() else list(Path(f'/tmp/codex-daemon-{os.getuid()}').glob('*'))
+        candidates=[p for p in candidates if p.is_socket() and not p.is_symlink() and p.stat().st_uid==os.getuid()]
+        if len(candidates)!=1:return {'status':'pending','reason':'app_server_control_unavailable'}
+        socket=str(candidates[0])
+    path=Path(socket)
+    if not path.is_socket() or path.is_symlink() or path.stat().st_uid!=os.getuid():
+        return {'status':'pending','reason':'app_server_control_unavailable'}
+    connection=None
     try:
+        connection=Connection(path,timeout);rpc=connection.rpc
         rpc(1,'initialize',{'clientInfo':{'name':'loom-use','version':'1'},'capabilities':{'experimentalApi':True}})
-        process.stdin.write(b'{"method":"initialized","params":{}}\n');process.stdin.flush()
+        connection.send({'method':'initialized','params':{}})
         rpc(2,'config/mcpServer/reload',{})
         rpc(3,'skills/list',{'cwds':[str(cwd)],'forceReload':True})
         if not thread_id: return {'status':'pending','reason':'refresh_requested_thread_unverified'}
@@ -51,10 +40,7 @@ def reconnect(name, cwd, thread_id=None, socket=None, timeout=6):
             result=rpc(id,'mcpServer/tool/call',{'threadId':thread_id,'server':name,'tool':'system','arguments':{'action':action}})
             if result.get('isError'): raise ValueError('Thread tool call failed')
         return {'status':'verified','scope':'existing_codex_thread','tool_count':len(server.get('tools',{}))}
-    except (OSError,ValueError,TimeoutError) as error:
+    except (OSError,ValueError,KeyError,IndexError,UnicodeError) as error:
         return {'status':'pending','reason':'app_server_'+type(error).__name__,'next':'Use Codex MCP Restart, then run doctor with the current thread ID.'}
     finally:
-        selector.close();process.terminate()
-        try: process.wait(3)
-        except subprocess.TimeoutExpired: process.kill();process.wait()
-        process.stdin.close();process.stdout.close()
+        if connection:connection.close()
