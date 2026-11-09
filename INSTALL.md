@@ -8,7 +8,11 @@ Python 3.11+ and Codex are required. Do not use sudo to configure the client.
 1. Read this file and [connections](docs/connections.md). Confirm the actual project
    directory exists. If it does not, report the path mismatch; never hide it with
    an invented directory or symlink. Use the pinned release supplied by Loom.
-2. Use the endpoint supplied by the installer/user. If absent, ask only which Loom
+2. Before requesting filesystem grants, run `python3 loom_use.py preflight`. Grant
+   the reported write scopes, including a missing `~/.agents` parent. This command
+   does not install or claim sandbox permissions; connect tests actual Skill writes
+   before network/token/configuration work.
+   Use the endpoint supplied by the installer/user. If absent, ask only which Loom
    address to connect to. A Gateway URL can resolve to its private Dashboard.
 3. Run `python3 /path/to/loom-use/loom_use.py connect <address>` from the existing
    project directory, or add `--cwd /existing/project` when running in this checkout.
@@ -51,3 +55,8 @@ source package; it contains this same INSTALL.md. Never silently follow main.
    [SSH](docs/ssh.md). Never request an MCP token as an SSH credential.
 
 Explicit `--authentication tailscale` removes the profile’s Bearer header without deleting its saved credential file. It never silently falls back after a rejected token. Reconnecting an existing profile also checks the server machine identity; disconnect that profile explicitly before binding a replacement server. Failed changes roll back only files/links still matching this operation’s writes, preserving concurrent edits by other tools.
+
+Diagnostics are private local JSONL under `$CODEX_HOME/loom-use/diagnostics` (or
+`~/.codex/loom-use/diagnostics`). Only allowlisted exception categories and code
+locations are recorded; never token values or request bodies. Rotation is bounded
+and no automatic upload occurs. See [diagnostics](docs/diagnostics.md).

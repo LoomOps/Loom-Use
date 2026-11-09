@@ -11,7 +11,7 @@ class TransportTests(unittest.TestCase):
    path=Path(t)/'client.json';path.write_text(json.dumps({'endpoint':'http://localhost/mcp','authentication':'tailscale'}))
    client=OpsTransport(path)
    for media in ('application/json','text/event-stream'):
-    for reply,valid in [({'jsonrpc':'2.0','id':1,'result':{}},True),({'jsonrpc':'2.0','id':2,'result':{}},False),({'id':1,'result':{}},False),({'jsonrpc':'2.0','id':1,'result':{},'error':{}},False),([],False)]:
+    for reply,valid in [({'jsonrpc':'2.0','id':1,'result':{}},True),({'jsonrpc':'2.0','id':1,'result':{'isError':True,'structuredContent':{'error':'tool_error','incident_id':'02c11225fd5740a9833b384f68aad3af'},'_meta':{'loom':{'contract_revision':'next'}}}},True),({'jsonrpc':'2.0','id':2,'result':{}},False),({'id':1,'result':{}},False),({'jsonrpc':'2.0','id':1,'result':{},'error':{}},False),([],False)]:
      raw=json.dumps(reply).encode()
      if media=='text/event-stream':raw=b'data: '+raw+b'\n\n'
      response=io.BytesIO(raw);response.status=200;response.headers=email.message.Message();response.headers['Content-Type']=media

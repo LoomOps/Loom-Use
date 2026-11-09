@@ -22,3 +22,18 @@ Codex control sockets use WebSocket-over-Unix, not JSONL. The integration fixtur
 performs the real HTTP Upgrade and rejects unmasked frames. No fake JSONL executable
 stands in for the transport. Actual runtime verification still requires the chosen
 thread to report connected and complete both system.status and system.guide.
+
+## Installation preflight and diagnostics
+
+Preflight must report the first missing parent without creating it. Connect tests
+actual Skill directory writes before network calls/config mutation. Permission
+failures preserve existing configuration. Collector tests cover secret exclusion,
+private files, rotation, duplicates, busy writers, concurrent writes and symlinks.
+The JSONL envelope is `loom-diagnostic/v1`, shared with Loom; neither product uploads
+records automatically. Runtime pending remains separate from installation failure.
+
+Transport regression includes JSON/SSE error results with structured diagnostic
+IDs and Loom revision metadata: these must pass through unchanged, not become a
+successful result or lose their correlation fields. External integration runners
+can pair current Loom and Loom Use source with their adapters; this is separate
+from testing an immutable published client release.

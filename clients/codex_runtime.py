@@ -61,9 +61,9 @@ def reconnect(name, cwd, thread_id=None, socket=None, timeout=6):
     if not binary: return {'status':'pending','reason':'codex_not_found'}
     try:path=discover_socket(socket)
     except ControlPathError as error:
-        return {'status':'pending','reason':str(error),'stage':'socket_discovery','next':FALLBACK}
+        return {'status':'pending','reason':str(error),'stage':'socket_discovery','next':FALLBACK,'installation':'unchanged','chat_verification':'pending'}
     except OSError:
-        return {'status':'pending','reason':'control_socket_discovery_failed','stage':'socket_discovery','next':FALLBACK}
+        return {'status':'pending','reason':'control_socket_discovery_failed','stage':'socket_discovery','next':FALLBACK,'installation':'unchanged','chat_verification':'pending'}
     connection=None;stage="connect";refreshed=False
     try:
         connection=Connection(path,timeout);rpc=connection.rpc

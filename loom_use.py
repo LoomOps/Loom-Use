@@ -12,7 +12,7 @@ sys.path.insert(0,str(ROOT/'clients'))
 from setup import atomic_private, private_directory, config_text, verify
 from headers import read_token
 from stdio import NoRedirect
-import releases, codex_runtime
+import releases, codex_runtime, diagnostics
 import ssh as ssh_client
 
 
@@ -52,6 +52,20 @@ def local_identity():
 def checked_name(name):
     if not re.fullmatch('[A-Za-z0-9_-]{1,80}',name):raise ValueError('Use a simple connection name')
     return name
+
+
+def path_plan(home=None, skill_root=None):
+    paths=[Path(home or os.environ.get('CODEX_HOME',Path.home()/'.codex')).expanduser().absolute(),
+           Path(skill_root or Path.home()/'.agents/skills').expanduser().absolute()]
+    result=[]
+    for target in paths:
+        existing=target;missing=[]
+        while not existing.exists():
+            missing.append(existing);existing=existing.parent
+        result.append({'target':str(target),'nearest_existing_parent':str(existing),
+                       'creation_root':str(missing[-1]) if missing else None,
+                       'write_scope':str(missing[-1] if missing else target)})
+    return {'paths':result,'note':'Sandbox grants must cover missing parents too. This is a path plan, not proof of write permission.'}
 
 
 def transactional(method):
@@ -100,6 +114,21 @@ class Client:
         if getattr(self,'_transaction_writes',None) is not None:self._transaction_writes[path]=text.encode()
 
     def save(self,state):self.write(self.index,json.dumps(state,indent=2)+'\n')
+
+    def prepare_skills(self):
+        plan=path_plan(self.home,self.skill_root)
+        try:
+            self.skill_root.mkdir(parents=True,exist_ok=True)
+            # Test actual sandbox permissions before token entry/download/config writes.
+            with tempfile.TemporaryFile(dir=self.skill_root):pass
+        except PermissionError as exc:
+            raise PermissionError('Skill directory is not writable; grant access to '+plan['paths'][1]['write_scope']) from exc
+
+    def refresh(self,name,cwd,thread_id=None):
+        result=codex_runtime.reconnect(name,cwd,thread_id)
+        if result.get('status')=='pending':
+            result['incident_id']=diagnostics.record('loom-use','refresh',code=result.get('reason','refresh_pending'),directory=self.root/'diagnostics',build=(ROOT/'VERSION').read_text().strip())
+        return result
 
     def probe(self,url,credential=None):
         with tempfile.TemporaryDirectory(dir=self.root) as t:
@@ -173,6 +202,7 @@ class Client:
     def connect(self,url,name='loom-use',token=None,authentication='auto',cwd=None,thread_id=None):
         name=checked_name(name);cwd=Path(cwd or Path.cwd())
         if not cwd.is_dir():raise ValueError('Project directory does not exist')
+        self.prepare_skills()
         url=resolve(url);state=self.load();old=state['connections'].get(name)
         if old and old['endpoint']!=url:raise ValueError('Connection name targets another Loom; use --name then connections use')
         if authentication not in ('auto','token','tailscale'):raise ValueError('Unknown authentication mode')
@@ -208,7 +238,7 @@ class Client:
                 if name!='loom-use':self.register('loom-use',profile)
                 state['active']=name
             self.save(state)
-            return {'connection':name,'endpoint':url,'server':report,'runtime':codex_runtime.reconnect(name,cwd,thread_id)}
+            return {'connection':name,'endpoint':url,'server':report,'runtime':self.refresh(name,cwd,thread_id)}
         finally:
             if temporary:temporary.cleanup()
 
@@ -221,7 +251,7 @@ class Client:
         inactive_default=name=='loom-use' and state['active']!=name
         if configured!=self.entry(p) and not inactive_default:raise ValueError('Codex registration differs from connection profile')
         if inactive_default:refresh=False
-        runtime=codex_runtime.reconnect(registration,cwd,thread_id) if refresh else {'status':'unverified'}
+        runtime=self.refresh(registration,cwd,thread_id) if refresh else {'status':'unverified'}
         return {'connection':name,'transport':report,'client_update_required':report['manifest'].get('client_release')!=p['release'],
                 'guide_update_required':report['manifest']['revision']!=p.get('revision'),'runtime':runtime,'registration':'inactive_profile' if inactive_default else 'configured'}
 
@@ -250,7 +280,7 @@ class Client:
         releases.verify(Path(p['release_path']),p['release'])
         self.register('loom-use',p,replace=True);self.skill(p['release_path'])
         state['active']=name;self.save(state)
-        return {'active':name,'endpoint':p['endpoint'],'runtime':codex_runtime.reconnect('loom-use',cwd,thread_id)}
+        return {'active':name,'endpoint':p['endpoint'],'runtime':self.refresh('loom-use',cwd,thread_id)}
 
 
 def remove_table(text,name):
@@ -271,6 +301,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--home',type=Path);parser.add_argument('--skill-root',type=Path)
     sub=parser.add_subparsers(dest='action',required=True)
+    sub.add_parser('preflight',help='Print writable roots including missing parent directories; does not install or connect')
     connect=sub.add_parser('connect');connect.add_argument('url');connect.add_argument('--name',default='loom-use');connect.add_argument('--authentication',choices=['auto','token','tailscale'],default='auto')
     for name in ('doctor','update','reconnect'):
         p=sub.add_parser(name);p.add_argument('--name')
@@ -279,7 +310,12 @@ def main():
         p.add_argument('--thread-id',default=os.environ.get('CODEX_THREAD_ID'),help='Optional current-chat verification only; defaults to CODEX_THREAD_ID, never stored in MCP registration')
     ssh=sub.add_parser('ssh');ssh.add_argument('operation',choices=['install','info','doctor']);ssh.add_argument('--name')
     connections=sub.add_parser('connections');connections.add_argument('operation',choices=['list','use','disconnect']);connections.add_argument('name',nargs='?')
-    a=parser.parse_args();client=Client(a.home,a.skill_root)
+    a=parser.parse_args()
+    if a.action=='preflight':
+        print(json.dumps(path_plan(a.home,a.skill_root),indent=2));return 0
+    global ERROR_DIRECTORY
+    ERROR_DIRECTORY=Path(a.home or os.environ.get('CODEX_HOME',Path.home()/'.codex'))/'loom-use/diagnostics'
+    client=Client(a.home,a.skill_root)
     with client.lock():
         if a.action=='connect':
             try:result=client.connect(a.url,a.name,authentication=a.authentication,cwd=a.cwd,thread_id=a.thread_id)
@@ -315,4 +351,5 @@ if __name__=='__main__':
         if isinstance(error,HTTPError):message=f'HTTP {error.code}: check access or token; no credentials changed'
         elif type(error) in (ValueError,PermissionError,KeyError):message=str(error)
         else:message=type(error).__name__+': check network, local paths and permissions'
-        print(json.dumps({'status':'incomplete','error':message}),file=sys.stderr);raise SystemExit(1)
+        incident=diagnostics.record('loom-use','command',error,directory=globals().get('ERROR_DIRECTORY',Path(os.environ.get('CODEX_HOME',Path.home()/'.codex'))/'loom-use/diagnostics'),build=(ROOT/'VERSION').read_text().strip())
+        print(json.dumps({'status':'incomplete','error':message,'incident_id':incident}),file=sys.stderr);raise SystemExit(1)

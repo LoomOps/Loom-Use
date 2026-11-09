@@ -178,3 +178,18 @@ class CLIContextTests(unittest.TestCase):
      self.assertEqual(kwargs['cwd'],expected_cwd);self.assertEqual(kwargs['thread_id'],expected_thread)
 
 if __name__=='__main__':unittest.main()
+
+class PreflightTests(unittest.TestCase):
+ def test_missing_parent_is_part_of_grant_plan_without_writes(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   root=Path(tmp);target=root/'.agents/skills'
+   plan=use.path_plan(root/'.codex',target)
+   self.assertEqual(plan['paths'][1]['write_scope'],str(root/'.agents'))
+   self.assertFalse(target.parent.exists())
+ def test_failed_skill_permission_does_not_contact_server_or_change_config(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   root=Path(tmp);client=use.Client(root/'codex',root/'new-parent/skills')
+   client.config.write_text('model="kept"\n')
+   with patch.object(use.tempfile,'TemporaryFile',side_effect=PermissionError('denied')),patch.object(client,'probe') as probe:
+    with self.assertRaisesRegex(PermissionError,'grant access'):client.connect('https://example.test',cwd=root)
+   probe.assert_not_called();self.assertEqual(client.config.read_text(),'model="kept"\n')
