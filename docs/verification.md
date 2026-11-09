@@ -7,6 +7,7 @@
 | auth | Real Tailscale user or Admin token | Tagged client, rejected token, no leakage, exact-endpoint adoption |
 | Codex | Existing process refresh; thread status AND live calls | Missing cwd/client/socket, timeout, cached catalog, actual tool error |
 | update | Server declaration, per-profile release selection | No change, version change, download failure, preserved token |
+| SSH | Local detection, personal remote account, strict host keys | Same host without account, wrong host/user, disabled access, live username check, optional Skill rollback |
 | server contract | MCP initialize/list/status/guide | Loom CI tests the released client against its actual HTTP server |
 
 Unit tests cannot prove a particular desktop application's control socket is

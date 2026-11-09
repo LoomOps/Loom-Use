@@ -34,3 +34,9 @@ a previously completed Loom server installation remains complete.
 For a Git checkout use `git clone https://github.com/LoomOps/Loom-Use.git` and
 checkout the tag specified by Loom. A checksum-verified release ZIP is the equivalent
 source package; it contains this same INSTALL.md. Never silently follow main.
+
+6. Offer optional Loom SSH for file analysis and component authoring. If selected,
+   run `python3 loom_use.py ssh install`, then `ssh info`. Same-host mode needs no
+   SSH account; otherwise reuse existing authorized SSH or direct the user to Admin
+   enablement. Run `ssh doctor` only for the intended remote connection. Read
+   [SSH](docs/ssh.md). Never request an MCP token as an SSH credential.

@@ -13,6 +13,7 @@ from setup import atomic_private, private_directory, config_text, verify
 from headers import read_token
 from stdio import NoRedirect
 import releases, codex_runtime
+import ssh as ssh_client
 
 
 def endpoint(value):
@@ -57,15 +58,16 @@ def transactional(method):
     @functools.wraps(method)
     def run(self,*args,**kwargs):
         files={p:p.read_bytes() if p.exists() else None for p in (self.config,self.index)}
-        link=self.skill_root/'loom-use'; old_link=os.readlink(link) if link.is_symlink() else None
+        links={self.skill_root/n:os.readlink(self.skill_root/n) if (self.skill_root/n).is_symlink() else None for n in ('loom-use','loom-ssh')}
         try:return method(self,*args,**kwargs)
         except BaseException:
             for p,data in files.items():
                 if data is None:p.unlink(missing_ok=True)
                 else:atomic_private(p,data.decode())
-            if link.is_symlink():
-                if old_link is None:link.unlink()
-                elif os.readlink(link)!=old_link:link.unlink();link.symlink_to(old_link)
+            for link,old_link in links.items():
+                if link.is_symlink():
+                    if old_link is None:link.unlink()
+                    elif os.readlink(link)!=old_link:link.unlink();link.symlink_to(old_link)
             raise
     return run
 
@@ -126,19 +128,35 @@ class Client:
         if original:atomic_private(self.config.with_name('config.toml.loom-use-backup'),original)
         atomic_private(self.config,updated)
 
-    def skill(self,release):
-        target=Path(release)/'skills/loom-use'
+    def skill(self,release,name='loom-use'):
+        if name not in ('loom-use','loom-ssh'):raise ValueError('Unknown Skill')
+        target=Path(release)/'skills'/name
         if not (target/'SKILL.md').is_file():raise ValueError('Skill missing')
         self.skill_root.mkdir(parents=True,exist_ok=True)
-        link=self.skill_root/'loom-use'
+        link=self.skill_root/name
         if link.exists() and not link.is_symlink():raise ValueError('Existing custom Skill retained; choose another skill root')
         if link.is_symlink():
             old=link.resolve(strict=False)
-            if not (old.is_relative_to(self.root) or old.is_relative_to(Path('/loom/loom_use')) or old==ROOT/'skills/loom-use'):
+            if not (old.is_relative_to(self.root) or old.is_relative_to(Path('/loom/loom_use')) or old==ROOT/'skills'/name):
                 raise ValueError('Unmanaged Skill link retained')
-        temporary=link.with_name('.loom-use-new')
+        temporary=link.with_name('.'+name+'-new')
         if temporary.exists() or temporary.is_symlink():raise ValueError('Pending Skill change exists')
         temporary.symlink_to(target);os.replace(temporary,link)
+        if name=='loom-use' and (self.skill_root/'loom-ssh').is_symlink():self.skill(release,'loom-ssh')
+
+    @transactional
+    def ssh(self,operation,name=None):
+        state=self.load();name=checked_name(name or state['active'] or 'loom-use');profile=state['connections'][name]
+        if operation=='install':
+            releases.verify(Path(profile['release_path']),profile['release'])
+            self.skill(profile['release_path'],'loom-ssh')
+            return {'skill':'loom-ssh','installed':True,'account_created':False}
+        # Verify machine identity before obtaining or updating connection metadata.
+        report=self.probe(profile['endpoint'],Path(profile['credential']) if profile.get('credential') else None)
+        if report['machine_id']!=profile['machine_id']:raise ValueError('Server identity changed')
+        result=ssh_client.doctor(profile) if operation=='doctor' else ssh_client.inspect(profile)
+        profile['ssh']=result;self.save(state)
+        return result
 
     @transactional
     def connect(self,url,name='loom-use',token=None,authentication='auto',cwd=None,thread_id=None):
@@ -244,6 +262,7 @@ def main():
         p=sub.add_parser(name);p.add_argument('--name')
     for p in [connect,*[sub.choices[n] for n in ('doctor','update','reconnect')]]:
         p.add_argument('--cwd',type=Path,default=Path.cwd());p.add_argument('--thread-id',default=os.environ.get('CODEX_THREAD_ID'))
+    ssh=sub.add_parser('ssh');ssh.add_argument('operation',choices=['install','info','doctor']);ssh.add_argument('--name')
     connections=sub.add_parser('connections');connections.add_argument('operation',choices=['list','use','disconnect']);connections.add_argument('name',nargs='?')
     a=parser.parse_args();client=Client(a.home,a.skill_root)
     with client.lock():
@@ -257,6 +276,7 @@ def main():
                 print('Obtain a token from Dashboard → Tailscale → Agent Tokens (Admin).',file=sys.stderr)
                 token=getpass.getpass('Agent token (hidden): ')
                 result=client.connect(a.url,a.name,token=token,cwd=a.cwd,thread_id=a.thread_id)
+        elif a.action=='ssh':result=client.ssh(a.operation,a.name)
         elif a.action=='update':result=client.update(a.name,a.cwd,a.thread_id)
         elif a.action in ('doctor','reconnect'):result=client.doctor(a.name,a.cwd,a.thread_id,refresh=a.action=='reconnect')
         elif a.operation=='list':

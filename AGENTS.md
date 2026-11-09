@@ -1,7 +1,7 @@
 # Loom Use development
 
 This repository owns client installation, connection profiles, authentication setup,
-Codex refresh and the loom-use Skill. Server features and authoritative action
+Codex refresh and the loom-use / optional loom-ssh Skills. Server features and authoritative action
 schemas belong to LoomOps/Loom. Use English for distributable documentation.
 
 Never commit credentials, personal Codex configuration or machine identities.
