@@ -1,5 +1,5 @@
 """Bounded reconnection to an existing Codex app-server; never start a daemon."""
-import errno, os, shutil, stat
+import errno, os, stat
 try:
     from .websocket_unix import Connection
 except ImportError:
@@ -57,8 +57,6 @@ FALLBACK=('Inspect the reported failure; use an available client MCP Restart too
 def reconnect(name, cwd, thread_id=None, socket=None, timeout=6):
     cwd = Path(cwd)
     if not cwd.is_dir(): return {'status':'pending','reason':'project_directory_missing','cwd':str(cwd)}
-    binary = shutil.which('codex')
-    if not binary: return {'status':'pending','reason':'codex_not_found'}
     try:path=discover_socket(socket)
     except ControlPathError as error:
         return {'status':'pending','reason':str(error),'stage':'socket_discovery','next':FALLBACK,'installation':'unchanged','chat_verification':'pending'}

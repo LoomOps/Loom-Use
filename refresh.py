@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Download a versioned Loom guide bundle; never execute downloaded content."""
-import argparse,hashlib,io,json,os,re,tempfile,zipfile
+import argparse,hashlib,io,json,os,re,stat,tempfile,zipfile
 from pathlib import Path
 from urllib.parse import urlsplit
 from urllib.request import Request,build_opener,HTTPRedirectHandler
@@ -29,13 +29,14 @@ def refresh(url,destination,token,development=False,authentication=None):
  revision=manifest['revision']
  if not re.fullmatch('[0-9a-f]{64}',revision):raise ValueError('Invalid server revision')
  parent=Path(destination)/server;target=parent/revision
+ if target.is_symlink() or any(p.is_symlink() for p in [parent,*parent.parents]):raise ValueError('Guide cache must not use symlinks')
  if target.is_dir():return {'updated':False,'path':str(target),'manifest':manifest}
  data=get('/api/guide/bundle');archive=zipfile.ZipFile(io.BytesIO(data))
  names=archive.namelist()
  if len(names)!=len(set(names)) or sum(i.file_size for i in archive.infolist())>8*1024*1024:raise ValueError('Invalid bundle size or duplicate entries')
  for name in names:
   p=Path(name)
-  if p.is_absolute() or '..' in p.parts or '\\' in name or not name or name.endswith('/'):raise ValueError('Invalid bundle path')
+  if p.is_absolute() or '..' in p.parts or '\\' in name or not name or str(p)!=name or name.endswith('/') or stat.S_ISLNK(archive.getinfo(name).external_attr>>16):raise ValueError('Invalid bundle path')
  if json.loads(archive.read('manifest.json'))['revision']!=revision:raise ValueError('Deployment changed during download; retry')
  parent.mkdir(parents=True,exist_ok=True)
  with tempfile.TemporaryDirectory(dir=parent,prefix='.download-') as temp:
@@ -48,4 +49,4 @@ def refresh(url,destination,token,development=False,authentication=None):
 if __name__=='__main__':
  p=argparse.ArgumentParser(description=__doc__);p.add_argument('url');p.add_argument('--directory',type=Path,default=Path.home()/'.cache/loom/guides');p.add_argument('--development',action='store_true');p.add_argument('--authentication',choices=['tailscale']);a=p.parse_args()
  try:print(json.dumps(refresh(a.url,a.directory,os.getenv('LOOM_TOKEN',''),a.development,a.authentication),indent=2))
- except Exception as error:p.exit(1,type(error).__name__+': '+str(error)+'\n')
+ except Exception as error:p.exit(1,type(error).__name__+': guide refresh failed; check endpoint, authentication and bundle integrity.\n')

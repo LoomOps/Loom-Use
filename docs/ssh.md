@@ -16,7 +16,10 @@ Managed remote connections use the personal Tailscale identity and an Admin-enab
 Unix account. Tagged clients are not automatically mapped to a person. Strict host
 key checking remains enabled; first-use trust is a separate check, not an auth error.
 
-The personal components/profiles directories are editable drafts. Register them with
+Personal Component/Tool/Profile sources are editable drafts. Register them with
 Loom MCP; do not change immutable runtime revisions. Shared storage permissions are
 configured on the host separately. Disabling SSH retains the home and does not cancel
 Jobs. Updating Loom Use preserves optional Skill selection and connection profiles.
+
+The Dashboard groups this software under **Extensions**. This label does not rename
+the `components` MCP group or change immutable revision and Profile pin semantics.

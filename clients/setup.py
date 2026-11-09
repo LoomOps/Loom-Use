@@ -38,6 +38,14 @@ def private_directory(path):
     return path
 
 
+def check_config(path):
+    if path.is_symlink():raise PermissionError('Refusing a symlink Codex config')
+    if path.exists():
+        info=path.stat()
+        if not stat.S_ISREG(info.st_mode) or info.st_uid!=os.getuid():
+            raise PermissionError('Codex config must be a regular file owned by this user')
+
+
 def entry(directory, endpoint):
     return {'url': endpoint, 'http_headers_helper': shlex.join([
         sys.executable, str(directory/'headers.py'), str(directory/'credential.json')])}
@@ -93,6 +101,7 @@ def verify(directory):
 
 
 def configure(directory, config, name, endpoint, token):
+    check_config(config)
     original = config.read_text() if config.exists() else ''
     updated = config_text(original, name, entry(directory, endpoint))
     # Validate endpoint before writing the supplied secret.
@@ -101,18 +110,28 @@ def configure(directory, config, name, endpoint, token):
         atomic_private(candidate/'credential.json', json.dumps({'token':token})+'\n')
         atomic_private(candidate/'client.json', json.dumps({'endpoint':endpoint,'credential':str(candidate/'credential.json')}))
         report = verify(candidate)
-    directory = private_directory(directory)
-    atomic_private(directory/'.gitignore', '*\n')
-    atomic_private(directory/'headers.py', Path(__file__).with_name('headers.py').read_text())
-    atomic_private(directory/'credential.json', json.dumps({'token':token})+'\n')
-    atomic_private(directory/'client.json', json.dumps({'endpoint':endpoint,'credential':str(directory/'credential.json')}))
     config.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    if config.is_symlink(): raise PermissionError('Refusing a symlink Codex config')
+    check_config(config)
     # Refuse to overwrite a concurrent client configuration edit.
     if (config.read_text() if config.exists() else '') != original:
         raise ValueError('Codex configuration changed; retry setup')
-    if original: atomic_private(config.with_name('config.toml.loom-backup'), original)
-    atomic_private(config, updated)
+    directory = private_directory(directory)
+    contents={directory/'.gitignore':'*\n',directory/'headers.py':Path(__file__).with_name('headers.py').read_text(),
+              directory/'credential.json':json.dumps({'token':token})+'\n',
+              directory/'client.json':json.dumps({'endpoint':endpoint,'credential':str(directory/'credential.json')})}
+    previous={p:p.read_bytes() if p.exists() else None for p in contents};written={}
+    try:
+        for p,content in contents.items():atomic_private(p,content);written[p]=content.encode()
+        check_config(config)
+        if (config.read_text() if config.exists() else '')!=original:raise ValueError('Codex configuration changed; retry setup')
+        if original:atomic_private(config.with_name('config.toml.loom-backup'),original)
+        atomic_private(config,updated)
+    except BaseException:
+        for p,content in written.items():
+            if p.is_symlink() or not p.is_file() or p.read_bytes()!=content:continue
+            if previous[p] is None:p.unlink()
+            else:atomic_private(p,previous[p].decode())
+        raise
     return {**report,'credential_file':str(directory/'credential.json'),'config':str(config),
             'next':'Reconnect this MCP server in Codex. No token renewal is required.'}
 

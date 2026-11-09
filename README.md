@@ -29,3 +29,8 @@ License: GPL-3.0. See LICENSE and THIRD_PARTY_NOTICES.md.
 Optional host file analysis and component authoring use [Loom SSH](docs/ssh.md).
 Install it with `python3 loom_use.py ssh install`, inspect with `ssh info`, and
 verify remote access with `ssh doctor`. Same-host mode uses local files without SSH.
+
+The Dashboard groups software under **Extensions**, with separate Components and
+Tools filters. A Component owns a Job lifecycle, a Tool is research software called
+inside a Job, and a Profile pins their versions and execution environment. The MCP
+group is still named `components`; discover its Tool/Profile actions from the server.

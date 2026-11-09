@@ -1,10 +1,18 @@
 """Pinned, checksum-verified client packages; no execution during download."""
-import hashlib, io, json, re, shutil, stat, tempfile, zipfile
+import hashlib, io, json, re, stat, tempfile, zipfile
 from pathlib import Path
 from urllib.request import urlopen
 
 REPOSITORY = 'LoomOps/Loom-Use'
 LIMIT = 8 * 1024 * 1024
+REQUIRED={'VERSION','INSTALL.md','loom_use.py','skills/loom-use/SKILL.md','clients/headers.py'}
+
+
+def member(name):
+    if not isinstance(name,str) or not name:return False
+    path=Path(name)
+    return (not path.is_absolute() and '..' not in path.parts and '\\' not in name
+            and str(path)==name and name!='.verified.json' and '__pycache__' not in path.parts)
 
 
 def validate(lock):
@@ -40,15 +48,14 @@ def unpack(data, lock, parent):
         verify(target, lock); return target
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
         entries = archive.infolist(); names = [e.filename for e in entries]
-        if len(set(names)) != len(names) or sum(e.file_size for e in entries) > LIMIT:
+        if not 1<=len(entries)<=4096 or len(set(names)) != len(names) or sum(e.file_size for e in entries) > LIMIT:
             raise ValueError('Invalid client package size or duplicate members')
         for e in entries:
-            p = Path(e.filename)
-            if p.is_absolute() or '..' in p.parts or '\\' in e.filename or e.is_dir() or stat.S_ISLNK(e.external_attr >> 16) or e.filename == '.verified.json':
+            if not member(e.filename) or e.is_dir() or stat.S_ISLNK(e.external_attr >> 16):
                 raise ValueError('Unsafe client package member')
         if archive.read('VERSION').decode().strip() != lock['version']:
             raise ValueError('Client package version mismatch')
-        for name in ('INSTALL.md', 'loom_use.py', 'skills/loom-use/SKILL.md', 'clients/headers.py'):
+        for name in REQUIRED:
             if name not in names: raise ValueError('Incomplete client package')
         with tempfile.TemporaryDirectory(dir=parent, prefix='.download-') as temp:
             stage = Path(temp)/'release'; stage.mkdir()
@@ -63,11 +70,22 @@ def unpack(data, lock, parent):
 
 
 def verify(target, lock):
+    validate(lock);target=Path(target)
     if target.is_symlink(): raise ValueError('Release target must not be a symlink')
+    if (target/'.verified.json').is_symlink():raise ValueError('Release receipt must not be a symlink')
     receipt = json.loads((target/'.verified.json').read_text())
     if receipt['lock'] != lock: raise ValueError('Existing release differs; retained')
+    files=receipt.get('files')
+    if not isinstance(files,dict) or not REQUIRED<=files.keys() or not 1<=len(files)<=4096:
+        raise ValueError('Incomplete installed release receipt')
+    paths=list(target.rglob('*'))
+    if any(p.is_symlink() for p in paths):raise ValueError('Installed release contains a symlink')
+    actual={str(p.relative_to(target)) for p in paths if p.is_file() and not ('__pycache__' in p.parts and p.suffix=='.pyc')}
+    if actual!=set(files)|{'.verified.json'}:raise ValueError('Installed release file set changed')
     for name, digest in receipt['files'].items():
+        if not member(name) or not isinstance(digest,str) or not re.fullmatch('[a-f0-9]{64}',digest):raise ValueError('Invalid installed release receipt')
         p = target/name
-        if p.is_symlink() or hashlib.sha256(p.read_bytes()).hexdigest() != digest:
+        if not p.resolve().is_relative_to(target.resolve()) or hashlib.sha256(p.read_bytes()).hexdigest() != digest:
             raise ValueError('Installed client changed; retained without overwrite')
+    if (target/'VERSION').read_text().strip()!=lock['version']:raise ValueError('Installed version differs from release')
     return target

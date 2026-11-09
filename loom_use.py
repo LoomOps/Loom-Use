@@ -9,7 +9,7 @@ from urllib.request import Request, build_opener
 
 ROOT=Path(__file__).resolve().parent
 sys.path.insert(0,str(ROOT/'clients'))
-from setup import atomic_private, private_directory, config_text, verify
+from setup import atomic_private, private_directory, config_text, verify, check_config
 from headers import read_token
 from stdio import NoRedirect
 import releases, codex_runtime, diagnostics
@@ -45,7 +45,10 @@ def local_identity():
     try:
         r=subprocess.run(['tailscale','status','--json'],capture_output=True,text=True,timeout=4,check=True)
         d=json.loads(r.stdout)
-        return {'state':d.get('BackendState'),'tagged':bool(d.get('Self',{}).get('Tags'))}
+        if not isinstance(d,dict):raise ValueError('Invalid local status')
+        own=d.get('Self') or {}
+        if not isinstance(own,dict):raise ValueError('Invalid local identity')
+        return {'state':d.get('BackendState'),'tagged':bool(own.get('Tags'))}
     except (OSError,subprocess.SubprocessError,ValueError): return {'state':'unknown','tagged':None}
 
 
@@ -155,10 +158,17 @@ class Client:
         return value
 
     def register(self,name,profile,replace=False):
-        if self.config.is_symlink():raise ValueError('Refusing a symlink Codex config')
+        check_config(self.config)
         original=self.config.read_text() if self.config.exists() else ''
         current=tomllib.loads(original).get('mcp_servers',{}).get(name)
+        state=self.load()
+        previous=state['connections'].get(state['active'] if name=='loom-use' else name)
+        if current and previous and current not in (self.entry(previous),self.entry(profile)):
+            raise ValueError('MCP registration changed outside this client; retained')
         if replace and current and current.get('url')!=profile['endpoint']:
+            active=state['connections'].get(state['active'])
+            if not active or current!=self.entry(active):
+                raise ValueError('Default MCP registration changed outside this client; retained')
             # config_text protects endpoint changes; remove only the owned table first.
             original_for_edit=remove_table(original,name)
         else: original_for_edit=original
@@ -268,8 +278,8 @@ class Client:
         self.skill(release)
         state['connections'][name]=new;self.save(state)
         runtime=({'status':'unverified','reason':'inactive_profile'} if name=='loom-use' and state['active']!=name else codex_runtime.reconnect(registration,cwd,thread_id))
-        # Pending app access is not a failed transport update. On explicit thread failure
-        # retain the previous profile/config so the operator can recover without secrets.
+        # Pending app access is not a failed transport update. Retain the verified
+        # new profile and previous release; runtime readiness remains explicit.
         return {'updated':old['release']!=lock,'connection':name,'runtime':runtime,'previous_release_retained':old['release']['version']}
 
     @transactional
@@ -281,6 +291,27 @@ class Client:
         self.register('loom-use',p,replace=True);self.skill(p['release_path'])
         state['active']=name;self.save(state)
         return {'active':name,'endpoint':p['endpoint'],'runtime':self.refresh('loom-use',cwd,thread_id)}
+
+    @transactional
+    def disconnect(self,name):
+        state=self.load();name=checked_name(name)
+        if name not in state['connections']:raise ValueError('Unknown connection')
+        check_config(self.config)
+        original=self.config.read_text();text=original;profile=state['connections'][name]
+        owned=[]
+        if name!='loom-use' or state['active']==name:owned.append(name)
+        if state['active']==name:owned.append('loom-use')
+        configured=tomllib.loads(original).get('mcp_servers',{})
+        for registration in set(owned):
+            current=configured.get(registration)
+            if current is not None and current!=self.entry(profile):
+                raise ValueError('MCP registration changed outside this client; retained')
+            text=remove_table(text,registration)
+        if self.config.read_text()!=original:raise ValueError('Configuration changed concurrently')
+        self.write(self.config,text)
+        if state['active']==name:state['active']=None
+        del state['connections'][name];self.save(state)
+        return {'disconnected':name,'credential_retained':True,'server_token_not_revoked':True}
 
 
 def remove_table(text,name):
@@ -334,13 +365,7 @@ def main():
             state=client.load();result={'active':state['active'],'connections':{n:{k:v for k,v in p.items() if k not in ('credential','release_path')} for n,p in state['connections'].items()}}
         elif a.operation=='use':result=client.use(a.name,Path.cwd(),os.environ.get('CODEX_THREAD_ID'))
         else:
-            state=client.load();name=checked_name(a.name)
-            if name not in state['connections']:raise ValueError('Unknown connection')
-            text=client.config.read_text()
-            if name!='loom-use' or state['active']==name:text=remove_table(text,name)
-            if state['active']==name:text=remove_table(text,'loom-use');state['active']=None
-            atomic_private(client.config,text);del state['connections'][name];client.save(state)
-            result={'disconnected':name,'credential_retained':True,'server_token_not_revoked':True}
+            result=client.disconnect(a.name)
     print(json.dumps(result,indent=2))
     return 0
 

@@ -22,6 +22,8 @@ The token is stored privately and reused; updates do not reissue it.
 credential. It retains the protected credential file for deliberate recovery.
 Revoke unused credentials in Dashboard Admin. Never infer remote revocation from
 local disconnection. `connections list` excludes secret values and credential paths.
+Disconnect and default switching refuse registrations changed outside this client;
+they never delete an unrelated replacement entry to make the command succeed.
 
 Doctor separates network/TLS, authentication, configuration, project cwd and Codex
 runtime failures. ENOENT during helper startup is not evidence of a bad token.

@@ -35,7 +35,8 @@ def label(value):
 def record(component, operation, error=None, *, code='unexpected_error', directory=None, build='unknown'):
     """Fail open, including read-only/full disks and busy cross-process writers."""
     try:
-        root = Path(directory or os.environ.get('LOOM_DIAGNOSTICS_DIR', '/loom/ops/diagnostics'))
+        default=Path(os.environ.get('CODEX_HOME',Path.home()/'.codex'))/'loom-use/diagnostics'
+        root = Path(directory or os.environ.get('LOOM_DIAGNOSTICS_DIR', default))
         if not root.is_absolute() or any(p.is_symlink() for p in (root, *root.parents)):
             return None
         root.mkdir(parents=True, mode=0o700, exist_ok=True)
@@ -43,7 +44,7 @@ def record(component, operation, error=None, *, code='unexpected_error', directo
         if info.st_uid != os.getuid() or info.st_mode & 0o077:
             return None
         if build=='unknown':
-            try:build=json.loads(Path(__file__).with_name('build-info.json').read_text()).get('build_id','unknown')
+            try:build=(Path(__file__).resolve().parents[1]/'VERSION').read_text().strip()
             except (OSError,ValueError):pass
         event = {'schema': SCHEMA, 'id': uuid.uuid4().hex, 'at': time.time(),
                  'component': label(component), 'operation': label(operation), 'code': label(code),

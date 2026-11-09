@@ -63,3 +63,10 @@ class DiagnosticsTests(unittest.TestCase):
             for i in range(10):diagnostics.record('test',f'zero{i}',directory=self.root)
         self.assertEqual(len(list(self.root.glob('*.jsonl'))),1)
         self.assertEqual(json.loads((self.root/'events.jsonl').read_text().splitlines()[-1])['operation'],'zero9')
+
+    def test_default_directory_and_build_belong_to_client(self):
+        home=Path(self.temp.name)/'codex'
+        with patch.dict(os.environ,{'CODEX_HOME':str(home)},clear=True):
+            self.assertIsNotNone(diagnostics.record('test','client-default'))
+        path=home/'loom-use/diagnostics/events.jsonl';item=json.loads(path.read_text())
+        self.assertEqual(item['build'],(Path(__file__).resolve().parents[1]/'VERSION').read_text().strip())

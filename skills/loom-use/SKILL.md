@@ -1,9 +1,14 @@
 ---
 name: loom-use
-description: Connect to Loom, install or update Loom Use, and submit or inspect Jobs, components, profiles and results through Loom MCP. Not general host administration.
+description: Connect to Loom, install or update Loom Use, and submit or inspect Jobs, Components, Tools, Profiles and results through Loom MCP. Not general host administration.
 ---
 
 # Loom Use
+
+Dashboard software navigation is Extensions. Components define Job lifecycles;
+Tools implement research software used within Jobs; Profiles freeze software and
+environment revisions. Keep these concepts distinct. The six MCP groups retain
+their existing names, including `components` for Component/Tool/Profile actions.
 
 Resolve this Skill's installed path; the client root is two directories above it.
 For initial setup read that root's INSTALL.md. For a different Loom address or

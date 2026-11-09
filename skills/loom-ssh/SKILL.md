@@ -1,6 +1,6 @@
 ---
 name: loom-ssh
-description: Analyze files, transfer data, or author components and profiles on a connected Loom host using local filesystem access or an existing personal SSH account. Use Loom MCP for Job execution and result registration.
+description: Analyze files, transfer data, or author Component, Tool and Profile drafts on a connected Loom host using local filesystem access or an existing personal SSH account. Use Loom MCP for Job execution and result registration.
 ---
 
 # Loom SSH
@@ -24,8 +24,11 @@ Use the returned SSH argv/username and preserve host key verification. For a fir
 connection, verify an unknown host key through the machine administrator or trusted
 Tailscale information before saving it. Keep connection and credential caches local.
 
-Write analyses and component/profile drafts in the personal home/workspaces. Read
+Write analyses and Component/Tool/Profile drafts in the personal home/workspaces. Read
 registered data paths with the current filesystem permissions. Register drafts via
 Loom MCP; running Jobs use frozen revisions, not mutable drafts. Submit GPU work
 through the Loom queue. Never edit the platform DB, secrets, or execution receipts
 to register a result or repair a Job. Transfer only the files needed for the task.
+
+The Dashboard calls their shared inventory Extensions. Registration does not prove
+runtime readiness, and renaming a UI section never rewrites existing Job pins.

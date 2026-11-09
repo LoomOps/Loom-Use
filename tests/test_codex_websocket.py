@@ -62,7 +62,7 @@ class WebSocketTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as temp:
    root=Path(temp);path=root/'control.sock';server=Server(path,mode)
    try:
-    with patch.object(codex_runtime.shutil,'which',return_value='/fixture/codex'):
+    with patch.dict(os.environ,{'PATH':''}):
      result=codex_runtime.reconnect('loom-use',root,thread,socket=str(path),timeout=.1 if mode=='timeout' else 1)
    finally:server.close()
    self.assertFalse(server.errors,server.errors)
@@ -80,14 +80,14 @@ class WebSocketTests(unittest.TestCase):
  def test_no_thread_and_missing_socket_do_not_claim_runtime_verified(self):
   result,methods=self.exercise(thread=None)
   self.assertEqual(result['status'],'refreshed');self.assertEqual(result['reason'],'refresh_requested_thread_unverified');self.assertNotIn('mcpServer/tool/call',methods)
-  with tempfile.TemporaryDirectory() as t,patch.object(codex_runtime.shutil,'which',return_value='/fixture/codex'):
+  with tempfile.TemporaryDirectory() as t,patch.dict(os.environ,{'PATH':''}):
    result=codex_runtime.reconnect('loom-use',t,socket=t+'/absent')
    self.assertEqual(result['reason'],'control_socket_missing')
  def test_canonical_socket_is_discovered(self):
   with tempfile.TemporaryDirectory() as t:
    root=Path(t);(root/'app-server-control').mkdir();path=root/'app-server-control/app-server-control.sock';server=Server(path)
    try:
-    with patch.dict(os.environ,{'CODEX_HOME':t}),patch.object(codex_runtime.shutil,'which',return_value='/fixture/codex'):
+    with patch.dict(os.environ,{'CODEX_HOME':t}),patch.dict(os.environ,{'PATH':''}):
      self.assertEqual(codex_runtime.reconnect('loom-use',root,'thread')['status'],'verified')
    finally:server.close()
    self.assertFalse(server.errors)
@@ -99,7 +99,7 @@ class WebSocketTests(unittest.TestCase):
     canonical=root/'app-server-control/app-server-control.sock';canonical.symlink_to(target)
     server=Server(target)
     try:
-     with patch.dict(os.environ,{'CODEX_HOME':t}),patch.object(codex_runtime.shutil,'which',return_value='/fixture/codex'):
+     with patch.dict(os.environ,{'CODEX_HOME':t}),patch.dict(os.environ,{'PATH':''}):
       result=codex_runtime.reconnect('loom-use',root,'thread',socket=canonical if explicit else None)
       self.assertEqual(result['status'],'verified')
       self.assertEqual(server.methods.count('mcpServer/tool/call'),2)
@@ -109,7 +109,7 @@ class WebSocketTests(unittest.TestCase):
  def test_invalid_selectors_report_reason_without_connecting(self):
   with tempfile.TemporaryDirectory() as t:
    root=Path(t);(root/'app-server-control').mkdir();path=root/'app-server-control/app-server-control.sock'
-   with patch.dict(os.environ,{'CODEX_HOME':t}),patch.object(codex_runtime.shutil,'which',return_value='/fixture/codex'),patch.object(codex_runtime,'Connection') as connect:
+   with patch.dict(os.environ,{'CODEX_HOME':t}),patch.dict(os.environ,{'PATH':''}),patch.object(codex_runtime,'Connection') as connect:
     path.symlink_to(root/'missing')
     self.assertEqual(codex_runtime.reconnect('loom-use',root)['reason'],'control_socket_missing')
     path.unlink();path.symlink_to(path)
@@ -137,7 +137,7 @@ class WebSocketTests(unittest.TestCase):
  def test_refused_socket_is_not_reported_as_missing_api(self):
   with tempfile.TemporaryDirectory() as t:
    root=Path(t);path=root/'closed.sock';s=socket.socket(socket.AF_UNIX);s.bind(str(path));s.close()
-   with patch.object(codex_runtime.shutil,'which',return_value='/fixture/codex'):
+   with patch.dict(os.environ,{'PATH':''}):
     result=codex_runtime.reconnect('loom-use',root,socket=path)
    self.assertEqual(result['reason'],'control_socket_connection_refused')
    self.assertEqual(result['stage'],'connect')

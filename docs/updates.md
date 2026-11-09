@@ -1,5 +1,10 @@
 # Exact release linkage
 
+Alpha.7 corrects config ownership/concurrency checks, disconnect and
+default-switch safety, cache validation and existing-socket refresh without a CLI
+binary. Editing this checkout does not update an installed client. Publish and validate
+the exact artifact before changing a server pin.
+
 Loom decides whether a server change needs a client code update, validates that
 choice in its feature/contract tests, and pins client_release (version, public
 release URL and SHA-256). Loom Use checks and applies that declaration. This is not

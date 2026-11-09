@@ -158,10 +158,78 @@ class ClientTests(unittest.TestCase):
    with self.assertRaises(ValueError):self.client.connect('https://one.test',cwd=self.root)
   self.assertEqual(os.readlink(link),str(self.root/'external-skill'))
 
+ def test_disconnect_and_switch_preserve_foreign_registrations(self):
+  self.connect();self.connect('second','https://two.test','second-token')
+  foreign=self.client.config.read_text().replace('https://one.test/mcp','https://foreign.test/mcp')
+  self.client.config.write_text(foreign);index=self.client.index.read_bytes()
+  with self.assertRaisesRegex(ValueError,'outside this client'):self.client.disconnect('loom-use')
+  with patch.object(self.client,'probe',return_value=self.report):
+   with self.assertRaisesRegex(ValueError,'outside this client'):self.client.use('second',self.root)
+  self.assertEqual(self.client.config.read_text(),foreign);self.assertEqual(self.client.index.read_bytes(),index)
+  foreign=foreign.replace('https://two.test/mcp','https://another.test/mcp');self.client.config.write_text(foreign)
+  with self.assertRaisesRegex(ValueError,'outside this client'):self.client.disconnect('second')
+  self.assertEqual(self.client.config.read_text(),foreign);self.assertEqual(self.client.index.read_bytes(),index)
+
+ def test_disconnect_keeps_credentials_and_other_connections(self):
+  self.connect();self.connect('second','https://two.test','second-token')
+  token=Path(self.client.load()['connections']['loom-use']['credential'])
+  self.assertTrue(self.client.disconnect('loom-use')['credential_retained'])
+  self.assertTrue(token.exists())
+  self.assertIn('second',self.client.load()['connections'])
+  config=tomllib.loads(self.client.config.read_text())
+  self.assertNotIn('loom-use',config['mcp_servers']);self.assertIn('other',config['mcp_servers'])
+
+ def test_same_endpoint_external_auth_changes_are_preserved(self):
+  self.connect();self.connect('second','https://two.test','second-token')
+  original=self.client.config.read_text()
+  foreign=original.replace('url = "https://one.test/mcp"','url = "https://one.test/mcp"\nstartup_timeout_sec = 90')
+  self.assertNotEqual(original,foreign);self.client.config.write_text(foreign)
+  before=self.client.index.read_bytes()
+  for action in (lambda:self.connect(),lambda:self.client.update(None,self.root),lambda:self.client.use('second',self.root)):
+   with patch.object(self.client,'probe',return_value=self.report),self.assertRaisesRegex(ValueError,'outside this client'):action()
+   self.assertEqual(self.client.config.read_text(),foreign);self.assertEqual(self.client.index.read_bytes(),before)
+
+ def test_cache_rejects_extra_source_symlink_parents_and_noncanonical_archive_paths(self):
+  extra=self.release/'clients/extra.py';extra.write_text('raise RuntimeError("untrusted")')
+  with self.assertRaisesRegex(ValueError,'file set'):releases.verify(self.release,self.lock)
+  extra.unlink();cache=self.release/'clients/__pycache__';cache.mkdir();(cache/'fixture.pyc').write_bytes(b'cache')
+  releases.verify(self.release,self.lock)
+  clients=self.release/'clients';outside=self.root/'moved-clients';clients.rename(outside);clients.symlink_to(outside,target_is_directory=True)
+  with self.assertRaisesRegex(ValueError,'symlink'):releases.verify(self.release,self.lock)
+  for name in ('./VERSION','clients//headers.py','clients/./headers.py'):
+   data=io.BytesIO()
+   with zipfile.ZipFile(data,'w') as z:z.writestr(name,'ambiguous')
+   raw=data.getvalue()
+   with self.assertRaisesRegex(ValueError,'Unsafe'):releases.unpack(raw,{**self.lock,'sha256':hashlib.sha256(raw).hexdigest()},self.root/'bad-canonical')
+
+ def test_legacy_configure_keeps_old_credential_on_config_race(self):
+  import setup as primitive
+  folder=self.root/'legacy';folder.mkdir(mode=0o700);secret=folder/'credential.json';secret.write_text('{"token":"old"}\n');secret.chmod(0o600)
+  foreign='model="foreign writer"\n'
+  def verify(*args):self.client.config.write_text(foreign);return {'scope':'independent_transport'}
+  with patch.object(primitive,'verify',side_effect=verify):
+   with self.assertRaisesRegex(ValueError,'configuration changed'):primitive.configure(folder,self.client.config,'legacy','https://one.test/mcp','new')
+  self.assertEqual(secret.read_text(),'{"token":"old"}\n');self.assertEqual(self.client.config.read_text(),foreign)
+  self.assertFalse((folder/'headers.py').exists())
+  original=primitive.atomic_private;written=[]
+  def raced(path,content):
+   original(path,content)
+   if path.name=='client.json' and not written:written.append(True);self.client.config.write_text('model="later writer"\n')
+  with patch.object(primitive,'verify',return_value={'scope':'independent_transport'}),patch.object(primitive,'atomic_private',side_effect=raced):
+   with self.assertRaisesRegex(ValueError,'configuration changed'):primitive.configure(folder,self.client.config,'legacy','https://one.test/mcp','new')
+  self.assertEqual(secret.read_text(),'{"token":"old"}\n');self.assertEqual(self.client.config.read_text(),'model="later writer"\n')
+  self.assertFalse((folder/'headers.py').exists())
+
+ def test_incomplete_local_tailscale_identity_does_not_crash(self):
+  from types import SimpleNamespace
+  for data in ({'Self':None},[],{'Self':'invalid'}):
+   with patch.object(use.subprocess,'run',return_value=SimpleNamespace(stdout=json.dumps(data))):
+    result=use.local_identity();self.assertIn(result['tagged'],(False,None))
+
 class RuntimeTests(unittest.TestCase):
- def test_missing_cwd_and_no_binary_are_pending(self):
+ def test_missing_cwd_and_missing_control_are_pending(self):
   self.assertEqual(codex_runtime.reconnect('loom-use','/not-existing-loom-directory')['reason'],'project_directory_missing')
-  with patch.object(codex_runtime.shutil,'which',return_value=None):self.assertEqual(codex_runtime.reconnect('loom-use','/tmp')['reason'],'codex_not_found')
+  with patch.object(codex_runtime,'discover_socket',side_effect=codex_runtime.ControlPathError('control_socket_missing')):self.assertEqual(codex_runtime.reconnect('loom-use','/tmp')['reason'],'control_socket_missing')
 class CLIContextTests(unittest.TestCase):
  def test_context_defaults_and_overrides_are_verification_arguments(self):
   import contextlib,os,sys
