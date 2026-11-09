@@ -63,7 +63,7 @@ class ClientTests(unittest.TestCase):
   self.assertEqual(secret.read_text(),'{"token":"old-token"}')
  def test_update_failure_preserves_old_and_success_preserves_secret(self):
   self.connect();before=self.client.config.read_bytes();index=self.client.index.read_bytes()
-  new={**self.report,'manifest':{'client_release':{**self.lock,'version':'0.1.0-alpha.2'},'revision':'r2'}}
+  new={**self.report,'manifest':{'client_release':{**self.lock,'version':self.lock['version'].rsplit('.',1)[0]+'.'+str(int(self.lock['version'].rsplit('.',1)[1])+1)},'revision':'r2'}}
   with patch.object(self.client,'probe',return_value=new),patch.object(use.releases,'install',side_effect=ValueError('hash')):
    with self.assertRaises(ValueError):self.client.update(None,self.root)
   self.assertEqual(before,self.client.config.read_bytes());self.assertEqual(index,self.client.index.read_bytes())
