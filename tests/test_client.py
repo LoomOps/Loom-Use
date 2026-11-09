@@ -122,4 +122,19 @@ class RuntimeTests(unittest.TestCase):
  def test_missing_cwd_and_no_binary_are_pending(self):
   self.assertEqual(codex_runtime.reconnect('loom-use','/not-existing-loom-directory')['reason'],'project_directory_missing')
   with patch.object(codex_runtime.shutil,'which',return_value=None):self.assertEqual(codex_runtime.reconnect('loom-use','/tmp')['reason'],'codex_not_found')
+class CLIContextTests(unittest.TestCase):
+ def test_context_defaults_and_overrides_are_verification_arguments(self):
+  import contextlib,os,sys
+  with tempfile.TemporaryDirectory() as t:
+   cwd=Path(t)
+   for supplied,expected_thread,expected_cwd,env in [
+     ([],None,cwd,{}),
+     ([], 'current-thread',cwd,{'CODEX_THREAD_ID':'current-thread'}),
+     (['--cwd',str(cwd/'project'),'--thread-id','explicit-thread'],'explicit-thread',cwd/'project',{'CODEX_THREAD_ID':'current-thread'})]:
+    with patch.dict(os.environ,env,clear=True),patch.object(sys,'argv',['loom_use.py','connect','https://loom.test/mcp',*supplied]),patch.object(Path,'cwd',return_value=cwd),patch.object(use,'Client') as cls,contextlib.redirect_stdout(io.StringIO()):
+     cls.return_value.connect.return_value={}
+     self.assertEqual(use.main(),0)
+     kwargs=cls.return_value.connect.call_args.kwargs
+     self.assertEqual(kwargs['cwd'],expected_cwd);self.assertEqual(kwargs['thread_id'],expected_thread)
+
 if __name__=='__main__':unittest.main()

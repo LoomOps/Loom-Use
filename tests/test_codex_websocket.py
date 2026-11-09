@@ -79,10 +79,10 @@ class WebSocketTests(unittest.TestCase):
    self.assertEqual(result['status'],'pending',mode)
  def test_no_thread_and_missing_socket_do_not_claim_runtime_verified(self):
   result,methods=self.exercise(thread=None)
-  self.assertEqual(result['reason'],'refresh_requested_thread_unverified');self.assertNotIn('mcpServer/tool/call',methods)
+  self.assertEqual(result['status'],'refreshed');self.assertEqual(result['reason'],'refresh_requested_thread_unverified');self.assertNotIn('mcpServer/tool/call',methods)
   with tempfile.TemporaryDirectory() as t,patch.object(codex_runtime.shutil,'which',return_value='/fixture/codex'):
    result=codex_runtime.reconnect('loom-use',t,socket=t+'/absent')
-   self.assertEqual(result['reason'],'app_server_control_unavailable')
+   self.assertEqual(result['reason'],'control_socket_missing')
  def test_canonical_socket_is_discovered(self):
   with tempfile.TemporaryDirectory() as t:
    root=Path(t);(root/'app-server-control').mkdir();path=root/'app-server-control/app-server-control.sock';server=Server(path)
@@ -91,3 +91,53 @@ class WebSocketTests(unittest.TestCase):
      self.assertEqual(codex_runtime.reconnect('loom-use',root,'thread')['status'],'verified')
    finally:server.close()
    self.assertFalse(server.errors)
+
+ def test_canonical_symlink_and_explicit_symlink_complete_real_calls(self):
+  for explicit in (False,True):
+   with tempfile.TemporaryDirectory() as t:
+    root=Path(t);(root/'app-server-control').mkdir();target=root/'actual.sock'
+    canonical=root/'app-server-control/app-server-control.sock';canonical.symlink_to(target)
+    server=Server(target)
+    try:
+     with patch.dict(os.environ,{'CODEX_HOME':t}),patch.object(codex_runtime.shutil,'which',return_value='/fixture/codex'):
+      result=codex_runtime.reconnect('loom-use',root,'thread',socket=canonical if explicit else None)
+      self.assertEqual(result['status'],'verified')
+      self.assertEqual(server.methods.count('mcpServer/tool/call'),2)
+    finally:server.close()
+    self.assertFalse(server.errors)
+
+ def test_invalid_selectors_report_reason_without_connecting(self):
+  with tempfile.TemporaryDirectory() as t:
+   root=Path(t);(root/'app-server-control').mkdir();path=root/'app-server-control/app-server-control.sock'
+   with patch.dict(os.environ,{'CODEX_HOME':t}),patch.object(codex_runtime.shutil,'which',return_value='/fixture/codex'),patch.object(codex_runtime,'Connection') as connect:
+    path.symlink_to(root/'missing')
+    self.assertEqual(codex_runtime.reconnect('loom-use',root)['reason'],'control_socket_missing')
+    path.unlink();path.symlink_to(path)
+    self.assertEqual(codex_runtime.reconnect('loom-use',root)['reason'],'control_socket_link_loop')
+    path.unlink();path.write_text('not a socket')
+    self.assertEqual(codex_runtime.reconnect('loom-use',root)['reason'],'control_path_not_socket')
+    connect.assert_not_called()
+
+ def test_foreign_owner_and_ambiguous_fallback_rejected(self):
+  with tempfile.TemporaryDirectory() as t:
+   root=Path(t);target=root/'actual.sock';s=socket.socket(socket.AF_UNIX);s.bind(str(target))
+   link=root/'link';link.symlink_to(target)
+   try:
+    with patch.object(codex_runtime.os,'getuid',return_value=os.getuid()+1):
+     with self.assertRaisesRegex(codex_runtime.ControlPathError,'owner_mismatch'):codex_runtime.control_path(link)
+    with patch.dict(os.environ,{'CODEX_HOME':t}),patch.object(Path,'glob',return_value=[target,link]):
+     self.assertEqual(codex_runtime.discover_socket(),target)
+    other=root/'other.sock';s2=socket.socket(socket.AF_UNIX);s2.bind(str(other))
+    try:
+     with patch.dict(os.environ,{'CODEX_HOME':t}),patch.object(Path,'glob',return_value=[target,other]):
+      with self.assertRaisesRegex(codex_runtime.ControlPathError,'ambiguous'):codex_runtime.discover_socket()
+    finally:s2.close()
+   finally:s.close()
+
+ def test_refused_socket_is_not_reported_as_missing_api(self):
+  with tempfile.TemporaryDirectory() as t:
+   root=Path(t);path=root/'closed.sock';s=socket.socket(socket.AF_UNIX);s.bind(str(path));s.close()
+   with patch.object(codex_runtime.shutil,'which',return_value='/fixture/codex'):
+    result=codex_runtime.reconnect('loom-use',root,socket=path)
+   self.assertEqual(result['reason'],'control_socket_connection_refused')
+   self.assertEqual(result['stage'],'connect')

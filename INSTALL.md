@@ -10,15 +10,24 @@ Python 3.11+ and Codex are required. Do not use sudo to configure the client.
    an invented directory or symlink. Use the pinned release supplied by Loom.
 2. Use the endpoint supplied by the installer/user. If absent, ask only which Loom
    address to connect to. A Gateway URL can resolve to its private Dashboard.
-3. Run `python3 loom_use.py connect <address>` in this checkout. The script detects
+3. Run `python3 /path/to/loom-use/loom_use.py connect <address>` from the existing
+   project directory, or add `--cwd /existing/project` when running in this checkout.
+   `--cwd` defaults to the shell working directory; no project is auto-discovered or
+   created. It controls project-scoped Skill refresh, not MCP registration scope. The script detects
    existing configuration, validates the server, obtains its exact required client
    release, installs the Skill and registers Streamable HTTP as `loom-use`.
    Resident/tagged clients use an Admin-issued Loom Agent Token. The hidden prompt explains where to
    obtain it. Do not issue it via sudo or copy a server owner credential.
 4. The command attempts to refresh the **running** Codex app-server and Skills.
-   Pass `--thread-id <current-thread>` if the client does not provide CODEX_THREAD_ID.
-   If the control API is unavailable, use the client's supported MCP Restart action
-   and verify real tool calls. Do not restart a daemon or claim that a separate
+   Installation, user-scoped MCP registration and refresh do **not** require a thread ID.
+   The optional `--thread-id` defaults to CODEX_THREAD_ID and only verifies actual
+   tool calls in that chat; it is never stored in the MCP registration or profile.
+   Do not ask the user for a thread ID when it is unavailable. Report refresh and
+   chat verification separately, then verify with the agent's actual MCP tools.
+   Normal user-owned control-socket symlinks are resolved and peer ownership checked.
+   If refresh fails, inspect its reason/stage. Do not call a rejected or inaccessible
+   socket an absent API. Discover and use an available agent-accessible MCP Restart
+   tool before asking the user to click Restart. Verify real tool calls afterward. Do not restart a daemon or claim that a separate
    app-server proves this chat works. Newly installed Skills may only become visible
    on a subsequent turn, depending on the client.
 5. Reread this checklist. Run `python3 loom_use.py doctor`, then call `system.status`

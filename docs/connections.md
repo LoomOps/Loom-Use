@@ -25,5 +25,19 @@ local disconnection. `connections list` excludes secret values and credential pa
 
 Doctor separates network/TLS, authentication, configuration, project cwd and Codex
 runtime failures. ENOENT during helper startup is not evidence of a bad token.
-A missing control API leaves reconnection pending; use the app's MCP Restart and
-actual tool calls. A fresh standalone app-server is not the active user's session.
+A failed refresh reports its stage and reason; it does not establish that the control
+API is absent. Use an available agent-accessible MCP Restart action before asking
+the user to restart it, then verify actual tool calls. A fresh standalone app-server is not the active user's session.
+
+
+`--cwd` defaults to the process working directory, not an automatically discovered
+Codex project. Use an existing project explicitly when invoking the script from
+an installation directory. It supplies the Skills refresh context, not a directory
+to create or a restriction on MCP use.
+
+`--thread-id` is optional and defaults to CODEX_THREAD_ID. It is used only for
+current-chat status and two real tool calls; it is not saved in Codex registration,
+a connection profile or credentials. Without it, successful reload reports
+`status: refreshed`, `verification: unverified`. Configuration and server transport
+can still be verified. Do not invent/select another thread or ask the user for an ID
+just to complete installation. Use the current agent's MCP tools when available.

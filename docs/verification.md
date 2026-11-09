@@ -5,7 +5,7 @@
 | release | Trusted repository, exact version/checksum, immutable directories | Wrong hash, traversal, duplicate, symlink, cache tamper |
 | profiles | Named endpoints, isolated credentials, atomic configuration | Repeated setup, collision, switch failure, unrelated settings |
 | auth | Real Tailscale user or Admin-issued Loom Agent Token | Tagged client, rejected token, no leakage, exact-endpoint adoption |
-| Codex | Existing process refresh; thread status AND live calls | Real Unix-socket HTTP Upgrade, masked frames, fragmented replies/ping, missing cwd/client/socket, timeout, cached catalog, actual tool error |
+| Codex | Existing process refresh; thread status AND live calls | Real Unix-socket HTTP Upgrade, masked frames, fragmented replies/ping, direct and symlink sockets, broken/loop/foreign-owner selectors, ambiguous fallback, refused connection, missing cwd/client/socket, optional thread refresh, timeout, cached catalog, actual tool error |
 | update | Server declaration, per-profile release selection | No change, version change, download failure, preserved token |
 | SSH | Local detection, personal remote account, strict host keys | Same host without account, wrong host/user, disabled access, live username check, optional Skill rollback |
 | server contract | MCP initialize/list/status/guide | Loom CI tests the released client against its actual HTTP server |

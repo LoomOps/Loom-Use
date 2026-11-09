@@ -261,7 +261,8 @@ def main():
     for name in ('doctor','update','reconnect'):
         p=sub.add_parser(name);p.add_argument('--name')
     for p in [connect,*[sub.choices[n] for n in ('doctor','update','reconnect')]]:
-        p.add_argument('--cwd',type=Path,default=Path.cwd());p.add_argument('--thread-id',default=os.environ.get('CODEX_THREAD_ID'))
+        p.add_argument('--cwd',type=Path,default=Path.cwd(),help='Existing project directory for Skill refresh; defaults to the shell working directory (not auto-discovered)')
+        p.add_argument('--thread-id',default=os.environ.get('CODEX_THREAD_ID'),help='Optional current-chat verification only; defaults to CODEX_THREAD_ID, never stored in MCP registration')
     ssh=sub.add_parser('ssh');ssh.add_argument('operation',choices=['install','info','doctor']);ssh.add_argument('--name')
     connections=sub.add_parser('connections');connections.add_argument('operation',choices=['list','use','disconnect']);connections.add_argument('name',nargs='?')
     a=parser.parse_args();client=Client(a.home,a.skill_root)
