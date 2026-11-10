@@ -36,3 +36,19 @@ for completion/errors. Ack is receipt; recovery.claim owns a repair lease. Loom 
 Jobs independently. Agent supervision/recovery policy belongs to the caller.
 Do not spawn supervisors, rewrite databases, issue tokens, or install server software
 as an entry step. Existing Job/profile pins remain unchanged by client updates.
+
+
+## Job unit and internal batching
+
+Treat one requested generation/training/evaluation outcome as one logical Job.
+Batching, vectorization, parallel workers and per-case checkpoints belong inside
+its pinned runner and allocated resources. Do not turn a time/output budget into
+separate scheduler Jobs without explicit agreement. Discover current server
+support for profile.steps and jobs.submit.consolidates from system.guide/describe;
+this client never invents fields or rewrites an accepted Job.
+
+Preserve existing fragmented execution and exact output provenance. With explicit
+authorization, one continuation Job may verify and reuse completed inputs; never
+regenerate completed scientific conditions just to clean up a Job list. Queue
+holds, operator dispatch pause, running-process return and Job completion are
+distinct. Only resume an operator pause when the requested correction is ready.

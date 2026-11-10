@@ -34,3 +34,7 @@ The Dashboard groups software under **Extensions**, with separate Components and
 Tools filters. A Component owns a Job lifecycle, a Tool is research software called
 inside a Job, and a Profile pins their versions and execution environment. The MCP
 group is still named `components`; discover its Tool/Profile actions from the server.
+
+A Job represents one requested outcome. Physical batches and vectorized work
+belong inside that Job by default. The connected server's Job guide specifies
+internal progress and explicit consolidation of preserved prior execution.
