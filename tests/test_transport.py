@@ -7,6 +7,33 @@ from stdio import OpsTransport
 from headers import read_token
 
 class TransportTests(unittest.TestCase):
+ def test_legacy_guide_cache_detects_changed_missing_and_extra_files(self):
+  import refresh
+  from types import SimpleNamespace
+  revision='b'*64
+  stream=io.BytesIO()
+  with zipfile.ZipFile(stream,'w') as archive:
+   archive.writestr('manifest.json',json.dumps({'revision':revision}));archive.writestr('entry.md','original')
+  data=stream.getvalue()
+  def response(req,**kwargs):
+   return io.BytesIO(json.dumps({'id':'user','scopes':['read']}).encode() if req.full_url.endswith('/api/principal') else
+                    json.dumps({'manifest':{'revision':revision}}).encode() if req.full_url.endswith('/api/guide') else data)
+  with tempfile.TemporaryDirectory() as t,patch.object(refresh,'build_opener',return_value=SimpleNamespace(open=response)):
+   target=Path(refresh.refresh('https://fixture.test',Path(t),'fixture')['path'])
+   self.assertFalse(refresh.refresh('https://fixture.test',Path(t),'fixture')['updated'])
+   (target/'.verified.json').unlink()  # An older cache is compared against the live bundle.
+   self.assertFalse(refresh.refresh('https://fixture.test',Path(t),'fixture')['updated'])
+   self.assertTrue((target/'.verified.json').is_file())
+   for change in ('changed','missing','extra','symlink'):
+    with self.subTest(change=change):
+     entry=target/'entry.md';entry.unlink(missing_ok=True);entry.write_text('original')
+     extra=target/'extra.md';extra.unlink(missing_ok=True)
+     if change=='changed':entry.write_text('edited')
+     elif change=='missing':entry.unlink()
+     elif change=='extra':extra.write_text('injected')
+     else:entry.unlink();entry.symlink_to(target/'manifest.json')
+     with self.assertRaises(ValueError):refresh.refresh('https://fixture.test',Path(t),'fixture')
+
  def test_legacy_guide_cache_refuses_aliases_and_symlink_reuse(self):
   import refresh
   from types import SimpleNamespace
@@ -54,6 +81,8 @@ class TransportTests(unittest.TestCase):
    p=Path(t)/'client.json';p.write_text(json.dumps({'endpoint':'http://localhost/mcp','authentication':'tailscale'}))
    client=OpsTransport(p)
    values=[{'name':'components','arguments':{'action':'get_tool','arguments':{'owner':'owner','id':'planner','revision':3}}},
+           {'name':'components','arguments':{'action':'get_runtime','arguments':{'id':'simulation','revision':2}}},
+           {'name':'components','arguments':{'action':'register_profile','arguments':{'id':'runner','profile':{'runtime':{'runtime_ref':{'id':'simulation','revision':2}}}}}},
            {'name':'components','arguments':{'action':'register_profile','arguments':{'id':'runner','profile':{'tools':{'planner':{'owner':'owner','id':'planner','revision':3}}}}}},
            {'name':'results','arguments':{'action':'historical','arguments':{'source':'catalog','kind':'model','id':'policy','revision':'original-snapshot'}}}]
    for i,value in enumerate(values):

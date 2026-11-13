@@ -30,5 +30,5 @@ Loom MCP; running Jobs use frozen revisions, not mutable drafts. Submit GPU work
 through the Loom queue. Never edit the platform DB, secrets, or execution receipts
 to register a result or repair a Job. Transfer only the files needed for the task.
 
-The Dashboard calls their shared inventory Extensions. Registration does not prove
+The Dashboard has separate software lists. Registration does not prove
 runtime readiness, and renaming a UI section never rewrites existing Job pins.

@@ -30,11 +30,17 @@ Optional host file analysis and component authoring use [Loom SSH](docs/ssh.md).
 Install it with `python3 loom_use.py ssh install`, inspect with `ssh info`, and
 verify remote access with `ssh doctor`. Same-host mode uses local files without SSH.
 
-The Dashboard groups software under **Extensions**, with separate Components and
-Tools filters. A Component owns a Job lifecycle, a Tool is research software called
+The Dashboard groups Profiles, Components, Tools and Runtimes in the Runtimes workspace. A Component owns a Job lifecycle, a Tool is research software called
 inside a Job, and a Profile pins their versions and execution environment. The MCP
 group is still named `components`; discover its Tool/Profile actions from the server.
 
 A Job represents one requested outcome. Physical batches and vectorized work
 belong inside that Job by default. The connected server's Job guide specifies
 internal progress and explicit consolidation of preserved prior execution.
+
+Runtime discovery and installation guidance are supplied by the connected server.
+Profiles select exact execution-environment revisions. The client forwards the
+current components.runtimes/get_runtime actions without adding another MCP server.
+Host installation is explicitly authorized administrator work and always uses the
+installation-configured dependency directory; client setup/update does not build
+images, install research frameworks or rewrite Job pins.

@@ -21,5 +21,5 @@ Loom MCP; do not change immutable runtime revisions. Shared storage permissions 
 configured on the host separately. Disabling SSH retains the home and does not cancel
 Jobs. Updating Loom Use preserves optional Skill selection and connection profiles.
 
-The Dashboard groups this software under **Extensions**. This label does not rename
+The Dashboard groups Profiles, Components, Tools and Runtimes in the Runtimes workspace. This label does not rename
 the `components` MCP group or change immutable revision and Profile pin semantics.
