@@ -106,3 +106,11 @@ query and cursor, and report partial/index-behind results as partial. Read only
 registered file/log ranges. Source-generation changes require a fresh range; do
 not join replayed logs, guess paths, rewrite historical records or run repairs
 merely because discovery is incomplete. Index rebuilds require administrator scope.
+
+For authorized reconciliation, discover results.reconcile_contract and the server
+items guide. Use existing native adoption or an additive verified copy binding before
+creating a new import. Propose explicit bounded scopes with original source identity;
+plan, validate and apply through the server. Do not rewrite historical rows, fabricate
+Jobs or treat a structural import as scientific validation. Whole-store scans and
+global reconciliation are separate tasks. Large producer outputs use the advertised
+Rust inventory SDK; exact artifact/member inputs remain independent of search lag.
