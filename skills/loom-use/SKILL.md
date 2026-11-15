@@ -94,3 +94,15 @@ When Scenarios are advertised, use an explicit exact Scenario revision for task
 context. Scenario links do not create Jobs, duplicate artifacts or grant file access.
 Keep unassigned/ambiguous historical context explicit rather than inferring it from
 names. Research/Operations and history filters never hide current queue occupants.
+
+
+## Finding files and logs
+
+When common search is advertised, read the server `items` guide. Search by text,
+kind and exact Scenario instead of repeatedly loading the entire catalog. Preserve
+Item/File/stream IDs as decimal strings and follow the returned exact native refs;
+these IDs never replace Job IDs or accepted input schemas. Page with the same
+query and cursor, and report partial/index-behind results as partial. Read only
+registered file/log ranges. Source-generation changes require a fresh range; do
+not join replayed logs, guess paths, rewrite historical records or run repairs
+merely because discovery is incomplete. Index rebuilds require administrator scope.

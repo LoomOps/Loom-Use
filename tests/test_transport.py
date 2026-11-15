@@ -92,3 +92,15 @@ class TransportTests(unittest.TestCase):
     with patch.object(client.opener,'open',return_value=response) as call:
      self.assertEqual(client.rpc(message),reply)
      self.assertEqual(json.loads(call.call_args.args[0].data),message)
+
+ def test_common_item_ids_cursors_and_partial_ranges_pass_through_losslessly(self):
+  identity='340282366920938463463374607431768211455'
+  arguments={'action':'read_file','arguments':{'file_item_id':identity,'offset':'9007199254740993','limit':1}}
+  reply={'jsonrpc':'2.0','id':1,'result':{'content':[{'type':'text','text':json.dumps({'file_item_id':identity,'next_offset':'9007199254740994','partial':True,'next_cursor':'opaque.signature'})}]}}
+  with tempfile.TemporaryDirectory() as t:
+   path=Path(t)/'config.json';path.write_text(json.dumps({'endpoint':'https://fixture.test/mcp','authentication':'tailscale'}));transport=OpsTransport(path)
+   response=io.BytesIO(json.dumps(reply).encode());response.status=200;response.headers=email.message.Message();response.headers['Content-Type']='application/json'
+   request={'jsonrpc':'2.0','id':1,'method':'tools/call','params':{'name':'results','arguments':arguments}}
+   with patch.object(transport.opener,'open',return_value=response) as call:
+    actual=transport.rpc(request);self.assertEqual(actual,reply);self.assertEqual(json.loads(call.call_args.args[0].data),request)
+    value=json.loads(actual['result']['content'][0]['text']);self.assertEqual(value['file_item_id'],identity);self.assertEqual(value['next_offset'],'9007199254740994');self.assertTrue(value['partial'])

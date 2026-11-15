@@ -97,3 +97,13 @@ execution identity or an access grant. Server capability discovery governs all
 new fields/actions; generic transport remains transparent. Build/SDK behavior is
 accepted against the actual Rust server/package fixtures separately from this
 client's setup/transport tests. Client updates never run Cargo, migration or Jobs.
+
+
+## Common Item transport
+
+Search, exact aliases and registered file/log ranges remain server-owned actions
+in the existing six groups. The transport must preserve 128-bit decimal strings,
+opaque cursors, exact historical snapshot selectors and partial/error envelopes.
+No parser coerces common IDs into floating point or interprets them as native Job
+IDs. Candidate/server acceptance is separate from client packaging tests; the
+client does not backfill or repair a server on connection.
