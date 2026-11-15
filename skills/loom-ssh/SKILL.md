@@ -32,3 +32,11 @@ to register a result or repair a Job. Transfer only the files needed for the tas
 
 The Dashboard has separate software lists. Registration does not prove
 runtime readiness, and renaming a UI section never rewrites existing Job pins.
+
+
+For new software drafts, prefer the server's Rust authoring templates and producer
+SDK when advertised. Build only within the authorized workspace/build Runtime,
+using configured dependency roots and exact source/target receipts. Use a pinned
+Python worker for a concrete external SDK integration; preserve the Rust execution
+orchestration and existing sealed revisions. Authoring access does not authorize
+compiler installation, server deployment or direct registry/DB edits.

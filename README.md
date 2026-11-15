@@ -44,3 +44,9 @@ current components.runtimes/get_runtime actions without adding another MCP serve
 Host installation is explicitly authorized administrator work and always uses the
 installation-configured dependency directory; client setup/update does not build
 images, install research frameworks or rewrite Job pins.
+
+
+New Component/Tool/Job orchestration defaults to Rust. External scientific SDKs may
+remain in explicit pinned Python worker stages. Rust authoring/build and versioned
+Scenario guidance are discovered from the connected server; this client does not
+install a compiler or change accepted source/Profile/Runtime pins on connection.

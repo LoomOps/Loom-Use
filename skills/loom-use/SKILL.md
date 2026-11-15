@@ -46,7 +46,7 @@ execution units. For multiple Profiles or resource stages, discover
 `jobs.submit_workflow` and submit one pinned execution graph when advertised.
 Each node retains its actual Attempts, resource ownership and verified outputs;
 link/report the returned main Job once. Use a stable request reference when
-available, including Pale's `loom_context.request_ref`, without requiring Pale.
+available, including an external coordinator's request reference, without requiring a coordinator.
 Use `presentation.scope=operations` for platform installation/runtime acceptance
 and keep technical receipts as supporting outputs. Explicitly requested research
 diagnostics remain research; names such as smoke do not decide their purpose.
@@ -77,3 +77,20 @@ path. New source, interfaces, stage commands or Runtime pins require a new revis
 state that concrete reason and reuse unchanged Tool revisions. Category tags are
 display metadata, never execution permissions. Read the connected server's current
 components guide and annotate schema before changing classification metadata.
+
+
+## Authoring language and Scenario context
+
+For new Components, Tools and Job orchestration, prefer Rust. First inspect reusable
+exact Profiles/Tools; changing inputs, seeds or params normally reuses them. When
+advertised, read the server authoring guide and use its Rust SDK/templates. Build
+in an authorized pinned builder Runtime and register exact source/build/target
+receipts; registration and client setup never execute Cargo build scripts.
+Use Python for a concrete external SDK/library integration, with that worker stage,
+dependency and reason recorded in the package and pinned Runtime. Keep pure control,
+batching, progress and result orchestration in Rust. Preserve existing accepted
+Python revisions; a language change creates a new revision and never repins a Job.
+When Scenarios are advertised, use an explicit exact Scenario revision for task
+context. Scenario links do not create Jobs, duplicate artifacts or grant file access.
+Keep unassigned/ambiguous historical context explicit rather than inferring it from
+names. Research/Operations and history filters never hide current queue occupants.

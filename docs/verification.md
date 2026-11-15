@@ -86,3 +86,14 @@ infers declared purpose from a name or observed Job.
 The Skill directs discovery and exact-kind reuse before registration, separates parameter changes from source/contract changes, and keeps category annotations outside execution permissions. Actual agent behavior requires call-history and distinct logical-Job analysis; guide text alone is not proof of adherence.
 
 Server-owned guides define components.curate, inspect_profile and compare_profiles. Existing clients fetch their schemas at connection; guide-only changes do not replace installed client code. Dependency representatives are references to installed metadata, and read-only inspection never submits Jobs or installs packages.
+
+
+## Rust-first authoring and Scenario context
+
+The distributed Skills prefer Rust SDK/templates for new producer orchestration,
+reuse exact Profiles for parameter changes and isolate justified external Python
+workers in pinned Runtimes. Scenario context is an explicit revisioned link, not
+execution identity or an access grant. Server capability discovery governs all
+new fields/actions; generic transport remains transparent. Build/SDK behavior is
+accepted against the actual Rust server/package fixtures separately from this
+client's setup/transport tests. Client updates never run Cargo, migration or Jobs.
