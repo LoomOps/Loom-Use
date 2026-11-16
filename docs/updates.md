@@ -9,7 +9,7 @@ python3 loom_use.py doctor --name NAME
 python3 loom_use.py update --name NAME
 ```
 
-The updater verifies the allowed LoomOps/Loom-Use release location and checksum, creates a separate release directory, preserves credentials and older releases, changes that connection's helper/Skill links and requests Codex reload. Different connections can use different releases. A download, checksum or preflight failure leaves the active client in place. Report pending runtime refresh separately and verify actual calls after reconnect.
+The updater verifies the allowed LoomOps/Loom-Use release location and checksum, creates a separate release directory, preserves credentials and older releases, changes that connection's helper and requests Codex reload. Shared Skill links follow the active connection; connecting or updating an inactive profile leaves them unchanged until `connections use NAME`. Different connections can use different releases. A download, checksum or preflight failure leaves the active client in place. Report pending runtime refresh separately and verify actual calls after reconnect.
 
 A checksum verifies package integrity relative to the declaration; it is not an independent publisher signature. A URL in a Job output or error message is not a client release instruction. Package execution is an explicit client operation, never a side effect of parsing a tool response.
 

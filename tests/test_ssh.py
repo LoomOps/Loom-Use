@@ -13,6 +13,13 @@ class SSHTests(unittest.TestCase):
         self.info['state']='not_enabled';self.info.pop('username')
         r=ssh.inspect(self.profile,self.info,{'100.64.0.1'})
         self.assertEqual(r['mode'],'local');self.assertNotIn('argv',r)
+        self.info['data_paths']={'data/0':'/srv/science'}
+        r=ssh.inspect(self.profile,self.info,{'100.64.0.1'})
+        self.assertEqual(r['data_paths'],self.info['data_paths']);self.assertEqual(r['ssh_grant_state'],'not_enabled')
+    def test_loopback_needs_positive_local_identity_before_hostname_alias_is_accepted(self):
+        profile={'endpoint':'http://127.0.0.1:8000/mcp'}
+        self.assertEqual(ssh.inspect(profile,self.info,{'100.64.0.1'})['mode'],'local')
+        with self.assertRaises(ValueError):ssh.inspect(profile,self.info,set())
     def test_remote_requires_exact_host_and_account(self):
         r=ssh.inspect(self.profile,self.info,set());self.assertEqual(r['mode'],'ssh');self.assertIn('StrictHostKeyChecking=yes',r['argv'])
         for k,v in [('host','evil.example'),('username','root'),('username','loomu_a;echo')]:
@@ -27,6 +34,9 @@ class SSHTests(unittest.TestCase):
             run.return_value.stdout='root\n';self.assertFalse(ssh.doctor(self.profile)['verified'])
     def test_local_detection_failure_does_not_invent_local_access(self):
         with patch.object(ssh.subprocess,'run',side_effect=FileNotFoundError):self.assertEqual(ssh.local_addresses(),set())
+    def test_incomplete_tailscale_status_does_not_invent_local_access(self):
+        for value in [{'Self':None},[],{'Self':'invalid'},{'Self':{'TailscaleIPs':None}}]:
+            with patch.object(ssh.subprocess,'run',return_value=SimpleNamespace(stdout=json.dumps(value))):self.assertEqual(ssh.local_addresses(),set())
     def test_optional_skill_update_rolls_back_both_links(self):
         import loom_use
         with tempfile.TemporaryDirectory() as t:

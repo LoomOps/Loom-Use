@@ -17,7 +17,7 @@ python3 loom_use.py doctor
 | Install or verify this client | [Installation](INSTALL.md) |
 | Switch, repair or disconnect | [Connections](docs/connections.md) |
 | Apply a server-declared client release | [Updates](docs/updates.md) |
-| Read/transfer host files or author drafts | [Optional SSH](docs/ssh.md) |
+| Resolve/analyze host files, transfer selected files or author drafts | [Optional SSH](docs/ssh.md) |
 | Interpret local diagnostics | [Diagnostics](docs/diagnostics.md) |
 | Change the client | [Implementation](clients/README.md), [developer instructions](AGENTS.md), [verification](docs/verification.md) |
 | Maintain these documents and Skills | [Documentation contract](docs/documentation.md), [inventory](docs/documentation-catalog.json) |

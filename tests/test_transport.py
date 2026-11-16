@@ -71,6 +71,16 @@ class TransportTests(unittest.TestCase):
       if valid:self.assertEqual(client.rpc({'jsonrpc':'2.0','id':1,'method':'tools/list'}),reply)
       else:
        with self.assertRaises(ValueError):client.rpc({'jsonrpc':'2.0','id':1,'method':'tools/list'})
+
+ def test_token_reader_rejects_private_fifo_and_oversized_credentials(self):
+  with tempfile.TemporaryDirectory() as t:
+   path=Path(t)/'credential.json';os.mkfifo(path,0o600)
+   script=Path(__file__).resolve().parents[1]/'clients/headers.py'
+   result=subprocess.run([sys.executable,str(script),str(path)],capture_output=True,text=True,timeout=2)
+   self.assertNotEqual(result.returncode,0);self.assertEqual(result.stdout,'')
+   path.unlink();path.write_text('{"token":"fixture-secret"}'+(' '*8192));path.chmod(0o600)
+   with self.assertRaisesRegex(ValueError,'bound'):read_token(path)
+
  def test_nonobject_credentials_fail_cleanly(self):
   with tempfile.TemporaryDirectory() as t:
    p=Path(t)/'credential.json';p.write_text('[]');p.chmod(0o600)

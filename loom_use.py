@@ -14,6 +14,7 @@ from headers import read_token
 from stdio import NoRedirect
 import releases, codex_runtime, diagnostics
 import ssh as ssh_client
+import file_access
 
 
 def endpoint(value):
@@ -195,8 +196,12 @@ class Client:
         if name=='loom-use' and (self.skill_root/'loom-ssh').is_symlink():self.skill(release,'loom-ssh')
 
     @transactional
-    def ssh(self,operation,name=None):
+    def ssh(self,operation,name=None,**options):
         state=self.load();name=checked_name(name or state['active'] or 'loom-use');profile=state['connections'][name]
+        if operation=='resolve':
+            result=file_access.resolve(profile,**options)
+            result['connection']['name']=name
+            return result
         if operation=='install':
             releases.verify(Path(profile['release_path']),profile['release'])
             self.skill(profile['release_path'],'loom-ssh')
@@ -242,7 +247,7 @@ class Client:
             # Refuse name collisions before replacing a shared Skill link.
             self.register(name,profile)
             if state['active']==name and name!='loom-use':self.register('loom-use',profile,replace=True)
-            self.skill(release)
+            if state['active'] in (None,name):self.skill(release)
             state['connections'][name]=profile
             if state['active'] is None:
                 if name!='loom-use':self.register('loom-use',profile)
@@ -275,7 +280,7 @@ class Client:
         registration='loom-use' if state['active']==name else name
         if not (name=='loom-use' and state['active']!=name):self.register(registration,new)
         if name!='loom-use' and registration!=name:self.register(name,new)
-        self.skill(release)
+        if state['active']==name:self.skill(release)
         state['connections'][name]=new;self.save(state)
         runtime=({'status':'unverified','reason':'inactive_profile'} if name=='loom-use' and state['active']!=name else codex_runtime.reconnect(registration,cwd,thread_id))
         # Pending app access is not a failed transport update. Retain the verified
@@ -339,9 +344,20 @@ def main():
     for p in [connect,*[sub.choices[n] for n in ('doctor','update','reconnect')]]:
         p.add_argument('--cwd',type=Path,default=Path.cwd(),help='Existing project directory for Skill refresh; defaults to the shell working directory (not auto-discovered)')
         p.add_argument('--thread-id',default=os.environ.get('CODEX_THREAD_ID'),help='Optional current-chat verification only; defaults to CODEX_THREAD_ID, never stored in MCP registration')
-    ssh=sub.add_parser('ssh');ssh.add_argument('operation',choices=['install','info','doctor']);ssh.add_argument('--name')
+    ssh=sub.add_parser('ssh');ssh.add_argument('operation',choices=['install','info','doctor','resolve']);ssh.add_argument('file_id',nargs='?');ssh.add_argument('--name')
+    ssh.add_argument('--copy',type=int,help='Zero-based copy index returned by results.get_file')
+    ssh.add_argument('--python',help='Existing absolute host Python path; defaults to python3 for a probe')
+    ssh.add_argument('--member',help='Relative archive member hint; never extracted or inspected by resolve')
+    ssh.add_argument('--probe',action='store_true',help='Check one file and Python through local tools or existing SSH')
+    ssh.add_argument('--verify',action='store_true',help='With --probe, hash the whole selected file')
+    ssh.add_argument('--ssh-target',help='Explicit existing manual SSH route USER@HOST; no grant or key is created')
+    ssh.add_argument('--ssh-port',type=int,default=22)
     connections=sub.add_parser('connections');connections.add_argument('operation',choices=['list','use','disconnect']);connections.add_argument('name',nargs='?')
     a=parser.parse_args()
+    if a.action=='ssh':
+        if a.operation=='resolve' and not a.file_id:parser.error('ssh resolve requires a File ID')
+        if a.operation!='resolve' and (a.file_id or a.copy is not None or a.python or a.member or a.probe or a.verify or a.ssh_target is not None or a.ssh_port!=22):parser.error('File access options require ssh resolve')
+        if a.verify and not a.probe:parser.error('--verify requires --probe')
     if a.action=='preflight':
         print(json.dumps(path_plan(a.home,a.skill_root),indent=2));return 0
     global ERROR_DIRECTORY
@@ -358,7 +374,9 @@ def main():
                 print('Obtain a token from Dashboard → Tailscale → Agent Tokens (Admin).',file=sys.stderr)
                 token=getpass.getpass('Agent token (hidden): ')
                 result=client.connect(a.url,a.name,token=token,cwd=a.cwd,thread_id=a.thread_id)
-        elif a.action=='ssh':result=client.ssh(a.operation,a.name)
+        elif a.action=='ssh':
+            options={k:getattr(a,k) for k in ('file_id','copy','python','member','probe','verify','ssh_target','ssh_port')} if a.operation=='resolve' else {}
+            result=client.ssh(a.operation,a.name,**options)
         elif a.action=='update':result=client.update(a.name,a.cwd,a.thread_id)
         elif a.action in ('doctor','reconnect'):result=client.doctor(a.name,a.cwd,a.thread_id,refresh=a.action=='reconnect')
         elif a.operation=='list':

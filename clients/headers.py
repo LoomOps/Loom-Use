@@ -7,12 +7,14 @@ import sys
 
 
 def read_token(path):
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     with os.fdopen(fd) as stream:
         info = os.fstat(stream.fileno())
         if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
             raise PermissionError('Credential must be owned by this user and private (0600)')
-        value = json.loads(stream.read(8192))
+        raw = stream.read(8193)
+        if len(raw) > 8192:raise ValueError("Credential exceeds its bound")
+        value = json.loads(raw)
     token = value.get('token') if isinstance(value,dict) else None
     if not isinstance(token, str) or not token or len(token) > 4096 or any(ord(c) < 33 or ord(c) > 126 for c in token):
         raise ValueError('Invalid credential')

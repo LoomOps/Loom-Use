@@ -17,6 +17,7 @@ For a working connection, call `system.status` to confirm the destination and pe
 | Publish or reconnect outputs | `results` (or `jobs`) |
 | Reuse a Dataset or publish a derived variant | `results`, then the exact lineage action schema |
 | Find files and logs | `items` |
+| Analyze output bytes or large archives | `items`, then optional `loom-ssh` with an existing local/SSH grant |
 | Reconcile selected existing assets | `reconciliation` (or `items`) |
 | Recover an error | `recovery` |
 | Pin task/protocol context | `scenarios` |
@@ -31,4 +32,4 @@ Before creating a Dataset variant, find the existing parent and retain its exact
 
 The client root is two directories above this installed Skill. Read its `INSTALL.md` for requested initial setup, `docs/connections.md` for switching/repair, and `docs/updates.md` for a declared client-release change. A working Job task does not require reinstalling or running a full doctor. Preserve named connections and keep credentials private to their endpoint.
 
-Report configuration, transport and this chat's MCP readiness separately. Use actual tool results; unavailable app refresh tools do not establish runtime readiness. Optional host authoring/file work uses `loom-ssh` and an existing grant. Server administration and global reconciliation require their own requested scope.
+Report configuration, transport and this chat's MCP readiness separately. Use actual tool results; unavailable app refresh tools do not establish runtime readiness. File discovery stays in MCP; use local/SSH tools for large-file inspection and short CPU summaries. The optional `loom-ssh` Skill resolves registered File IDs and checks the chosen host Python. A missing client helper does not require repairing a working MCP connection: follow the server `items` guide and an existing authorized route. Server administration and global reconciliation require their own requested scope.

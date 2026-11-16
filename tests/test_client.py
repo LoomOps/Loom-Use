@@ -44,7 +44,7 @@ class ClientTests(unittest.TestCase):
   with self.assertRaises(ValueError):self.client.connect('https://two.test',cwd=self.root)
   self.assertEqual(before,self.client.config.read_bytes())
   with patch.object(self.client,'probe',return_value=self.report),patch.object(self.client,'skill',side_effect=ValueError('custom skill')):
-   with self.assertRaises(ValueError):self.client.connect('https://two.test','second',token='token2',cwd=self.root)
+   with self.assertRaises(ValueError):self.client.connect('https://one.test',token='token2',cwd=self.root)
   self.assertEqual(before,self.client.config.read_bytes());self.assertEqual(index,self.client.index.read_bytes())
  def test_missing_cwd_never_calls_server(self):
   with patch.object(self.client,'probe') as probe:
@@ -117,6 +117,25 @@ class ClientTests(unittest.TestCase):
    with self.assertRaises(ValueError):releases.unpack(raw,{**self.lock,'sha256':hashlib.sha256(raw).hexdigest()},self.root/kind)
  def test_release_build_is_deterministic(self):
   self.assertEqual(package.build(self.root/'again'),self.lock)
+
+ def test_inactive_connection_and_update_preserve_active_skill_release(self):
+  self.connect()
+  self.client.ssh('install')
+  original={name:os.readlink(self.client.skill_root/name) for name in ('loom-use','loom-ssh')}
+  other_version='9.9.9-alpha.1';stream=io.BytesIO()
+  with zipfile.ZipFile(io.BytesIO(self.data)) as source,zipfile.ZipFile(stream,'w') as archive:
+   for name in source.namelist():archive.writestr(name,other_version if name=='VERSION' else source.read(name))
+  data=stream.getvalue()
+  lock={'version':other_version,'url':f'https://github.com/LoomOps/Loom-Use/releases/download/v{other_version}/loom-use-{other_version}.zip','sha256':hashlib.sha256(data).hexdigest()}
+  other=releases.unpack(data,lock,self.client.root/'releases')
+  report={**self.report,'manifest':{'client_release':lock,'revision':'other'}}
+  with patch.object(self.client,'probe',return_value=report),patch.object(use.releases,'install',return_value=other):
+   self.client.connect('https://two.test','second',token='second-token',cwd=self.root)
+   self.client.update('second',self.root)
+   self.assertEqual(self.client.load()['active'],'loom-use')
+   self.assertEqual({name:os.readlink(self.client.skill_root/name) for name in original},original)
+   self.client.use('second',self.root)
+  for name in original:self.assertEqual((self.client.skill_root/name).resolve(),other/'skills'/name)
 
  def test_explicit_tailscale_drops_saved_header_but_preserves_secret(self):
   self.connect();secret=Path(self.client.load()['connections']['loom-use']['credential'])
