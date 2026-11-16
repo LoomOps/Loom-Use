@@ -15,6 +15,7 @@ For a working connection, call `system.status` to confirm the destination and pe
 | Reuse or create software | `components`, then `authoring` when writing source |
 | Choose or install an environment | `runtimes` |
 | Publish or reconnect outputs | `results` (or `jobs`) |
+| Reuse a Dataset or publish a derived variant | `results`, then the exact lineage action schema |
 | Find files and logs | `items` |
 | Reconcile selected existing assets | `reconciliation` (or `items`) |
 | Recover an error | `recovery` |
@@ -23,6 +24,8 @@ For a working connection, call `system.status` to confirm the destination and pe
 Keep the original accepted request and stable key after an uncertain response; retain the returned Job ID. One requested outcome normally maps to one logical Job with internal batches or a workflow. Reuse compatible exact Profiles before creating new revisions. Client or guide updates never repin existing Jobs. Event ACK records receipt; `recovery.claim` acquires a repair lease.
 
 Compare response `_meta.loom` / onboarding revisions after reconnect or a version change. Refresh changed guides and schemas. Missing guide IDs on older servers are a reason to use that server's index, not invent newer fields.
+
+Before creating a Dataset variant, find the existing parent and retain its exact reference. Follow the server guide to distinguish relocation, condition selection, partial reuse and new data generation. Shared Task membership and general input consumption do not establish derivation. Publish typed output facts; do not fill missing research fields or write generic Overview prose.
 
 ## Client tasks
 
