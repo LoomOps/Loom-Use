@@ -12,6 +12,7 @@
 | guide cache | Version-scoped complete guide files | Unchanged reuse, verified legacy adoption, aliases, changed/missing/extra files and symlinks | `test_transport.py` |
 | diagnostics | Private bounded fail-open collection | Secret exclusion, rotation, concurrency, symlink and busy writer rejection | `test_diagnostics.py` |
 | verification | Current matrix matches executable modules | Missing/new/obsolete module references are rejected | `test_verification.py` |
+| documentation | Complete document inventory, local navigation and portable Skill metadata | Added unclassified file, broken reference and invalid Skill name | `test_documentation.py` |
 
 Run `python3 -m unittest discover -s tests -v` for these mapped regressions and
 `python3 package.py --output <temporary-directory>` for packaging. Record actual
@@ -33,77 +34,10 @@ stands in for the transport. Actual runtime verification still requires the chos
 thread to report connected and complete both system.status and system.guide.
 Refreshing an existing control socket does not require a `codex` executable on PATH.
 
-## Installation preflight and diagnostics
+## Evidence boundaries
 
-Preflight must report the first missing parent without creating it. Connect tests
-actual Skill directory writes before network calls/config mutation. Permission
-failures preserve existing configuration. Collector tests cover secret exclusion,
-private files, rotation, duplicates, busy writers, concurrent writes and symlinks.
-The JSONL envelope is `loom-diagnostic/v1`, shared with Loom; neither product uploads
-records automatically. Runtime pending remains separate from installation failure.
-The client collector reads the client VERSION and uses CODEX_HOME/loom-use, rather
-than server `/loom` defaults. The legacy guide helper rejects symlink cache paths
-and archive aliases and redacts exception text that could contain a credential.
-Guide-cache reuse verifies the complete file set and recorded hashes. Older caches
-without a receipt are compared with a fresh server bundle before adoption; changed,
-missing, extra or linked files are rejected and retained without overwrite. These
-receipts detect cache changes within the current OS user's trust boundary.
+The tests exercise private temporary homes, real Unix WebSocket framing and mock external service boundaries. Server schemas, Rust producer behavior, Runtime/GPU acceptance and actual agent Profile reuse are verified in Loom or call-history review, not inferred from these client tests.
 
-Transport regression includes JSON/SSE error results with structured diagnostic
-IDs and Loom revision metadata: these must pass through unchanged, not become a
-successful result or lose their correlation fields. External integration runners
-can pair current Loom and Loom Use source with their adapters; this is separate
-from testing an immutable published client release.
+The generic transport preserves large decimal-string IDs, exact revision selectors, opaque cursors, errors and revision metadata. Setup/update does not execute Cargo, migrations, Jobs or server installation. The local cache receipt detects changes within the current OS user's trust boundary; it is not a signature against that user rewriting the entire cache.
 
-## Research Tools and administrator migrations
-
-The transport remains generic across the six groups: optional components Tool
-registration/discovery and exact Tool pins pass through without rewriting source,
-credentials or Job arguments. Server guides own these schemas. Administrator
-migration plans/scripts are separate from client update/guide refresh: a client
-never executes them, chooses rebuild, or registers operational research software
-as a side effect of connection. Use immutable release checksums and the selected
-server's declaration; no new client code is required for these additive actions.
-
-The **Runtimes** workspace contains **Profiles**, **Components**, **Tools** and **Runtimes**. **Profiles**
-is the default view for execution combinations. These labels do not replace
-API group names. Client cache checks detect accidental or external
-file changes under the current OS user's trust boundary; the local receipt is not
-an independent signature against that same user rewriting the entire cache.
-
-Runtime extension actions use the same generic transport and live server schemas.
-The Runtime administrator workflow is separate from client installation: the Skill
-reads the server runtimes guide, preserves exact Profile/Job pins and uses the
-configured dependency directory. Client tests do not prove framework/GPU readiness.
-
-Execution Profile combinations and optional usage declarations are server-owned
-contracts. Multiple categories/modes are descriptive, not new client gates.
-`components.assign_owner` changes display attribution while preserving namespace
-and exact pins. Built-in denotes Loom-supplied software; all software remains
-shared. The client never relabels research code, rewrites Profile revisions or
-infers declared purpose from a name or observed Job.
-
-The Skill directs discovery and exact-kind reuse before registration, separates parameter changes from source/contract changes, and keeps category annotations outside execution permissions. Actual agent behavior requires call-history and distinct logical-Job analysis; guide text alone is not proof of adherence.
-
-Server-owned guides define components.curate, inspect_profile and compare_profiles. Existing clients fetch their schemas at connection; guide-only changes do not replace installed client code. Dependency representatives are references to installed metadata, and read-only inspection never submits Jobs or installs packages.
-
-
-## Rust-first authoring and Scenario context
-
-The distributed Skills prefer Rust SDK/templates for new producer orchestration,
-reuse exact Profiles for parameter changes and isolate justified external Python
-workers in pinned Runtimes. Scenario context is an explicit revisioned link, not
-execution identity or an access grant. Server capability discovery governs all
-new fields/actions; generic transport remains transparent. Build/SDK behavior is
-accepted against the actual Rust server/package fixtures separately from this
-client's setup/transport tests. Client updates never run Cargo, migration or Jobs.
-
-
-## Common Item transport
-
-Search, exact aliases and registered file/log ranges remain server-owned actions
-in the existing six groups. The transport must preserve 128-bit decimal strings,
-opaque cursors, exact historical snapshot selectors and partial/error envelopes.
-No parser coerces common IDs into floating point or interprets them as native Job
-IDs. Candidate/server acceptance is separate from client packaging tests; the
-client does not backfill or repair a server on connection.
+Review [documentation](documentation.md) separately: check local links, Skill metadata, task routing and the guide's ownership of server contracts. A wording check is not proof that an agent followed the instructions.

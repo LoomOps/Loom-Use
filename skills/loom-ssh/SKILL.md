@@ -1,42 +1,14 @@
 ---
 name: loom-ssh
-description: Analyze files, transfer data, or author Component, Tool and Profile drafts on a connected Loom host using local filesystem access or an existing personal SSH account. Use Loom MCP for Job execution and result registration.
+description: Read or transfer files and author Component, Tool or Profile drafts on a Loom host using local filesystem access or an existing personal SSH grant. Use Loom MCP for execution and result registration.
 ---
 
-# Loom SSH
+# Loom host access
 
-Use the installed Loom Use client beside this Skill: resolve this file's directory,
-then run `python3 ../../loom_use.py ssh info` from it. A named connection accepts
-`--name NAME`. Read the selected connection, not a remembered machine address.
+Resolve this Skill's directory and run `python3 ../../loom_use.py ssh info` there. Use `--name NAME` for a named connection. Read `docs/ssh.md` in the client root for setup and failures.
 
-If the result says `mode: local`, work as the current OS user with local tools.
-Do not SSH back into this machine or request another account. Missing file permissions
-remain real; do not borrow the `loom` service identity or sudo implicitly.
+- `mode: local`: use the current OS user and local tools. Do not SSH back into this host or create another account.
+- Remote: reuse an already authorized user-supplied connection, or run `ssh doctor` for the managed personal account. If a grant is missing, report the Dashboard Admin → Tailscale → SSH requirement. An MCP token is not an SSH credential.
+- Preserve host-key verification. Confirm an unknown key through the administrator or trusted host information before saving it.
 
-For a remote host, use `ssh doctor` to verify the personal account. Reuse an existing
-user-supplied SSH connection when it is already authorized for that host; no managed
-account is required in that case. Otherwise, if access is not enabled, direct the user
-to Dashboard → Tailscale → SSH (Admin). An MCP token never authenticates SSH.
-A tagged source device does not prove the person's Tailscale identity; report that
-boundary rather than inventing a key-issuance or account-creation workaround.
-
-Use the returned SSH argv/username and preserve host key verification. For a first
-connection, verify an unknown host key through the machine administrator or trusted
-Tailscale information before saving it. Keep connection and credential caches local.
-
-Write analyses and Component/Tool/Profile drafts in the personal home/workspaces. Read
-registered data paths with the current filesystem permissions. Register drafts via
-Loom MCP; running Jobs use frozen revisions, not mutable drafts. Submit GPU work
-through the Loom queue. Never edit the platform DB, secrets, or execution receipts
-to register a result or repair a Job. Transfer only the files needed for the task.
-
-The Dashboard has separate software lists. Registration does not prove
-runtime readiness, and renaming a UI section never rewrites existing Job pins.
-
-
-For new software drafts, prefer the server's Rust authoring templates and producer
-SDK when advertised. Build only within the authorized workspace/build Runtime,
-using configured dependency roots and exact source/target receipts. Use a pinned
-Python worker for a concrete external SDK integration; preserve the Rust execution
-orchestration and existing sealed revisions. Authoring access does not authorize
-compiler installation, server deployment or direct registry/DB edits.
+Use the personal workspace and existing filesystem permissions. Missing access does not grant the service identity, sudo or Docker. Transfer only task-relevant files. For software drafts, load the server's `components` and `authoring` guides and use the configured dependency root. Register exact revisions through MCP and submit execution through the Loom queue. Mutable draft files do not change accepted Job pins.

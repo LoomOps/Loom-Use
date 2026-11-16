@@ -1,0 +1,83 @@
+{
+  "schema": "loom-use-documentation/v1",
+  "documents": [
+    {
+      "path": "AGENTS.md",
+      "audience": "agent",
+      "authority": "client setup and refresh; server behavior via live discovery",
+      "status": "current"
+    },
+    {
+      "path": "INSTALL.md",
+      "audience": "reader",
+      "authority": "client setup and refresh; server behavior via live discovery",
+      "status": "current"
+    },
+    {
+      "path": "README.md",
+      "audience": "reader",
+      "authority": "client setup and refresh; server behavior via live discovery",
+      "status": "current"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "audience": "reader",
+      "authority": "client setup and refresh; server behavior via live discovery",
+      "status": "legal"
+    },
+    {
+      "path": "clients/README.md",
+      "audience": "maintainer",
+      "authority": "client setup and refresh; server behavior via live discovery",
+      "status": "current"
+    },
+    {
+      "path": "docs/connections.md",
+      "audience": "reader",
+      "authority": "client setup and refresh; server behavior via live discovery",
+      "status": "current"
+    },
+    {
+      "path": "docs/diagnostics.md",
+      "audience": "reader",
+      "authority": "client setup and refresh; server behavior via live discovery",
+      "status": "current"
+    },
+    {
+      "path": "docs/documentation.md",
+      "audience": "reader",
+      "authority": "client setup and refresh; server behavior via live discovery",
+      "status": "current"
+    },
+    {
+      "path": "docs/ssh.md",
+      "audience": "reader",
+      "authority": "client setup and refresh; server behavior via live discovery",
+      "status": "current"
+    },
+    {
+      "path": "docs/updates.md",
+      "audience": "reader",
+      "authority": "client setup and refresh; server behavior via live discovery",
+      "status": "current"
+    },
+    {
+      "path": "docs/verification.md",
+      "audience": "maintainer",
+      "authority": "client setup and refresh; server behavior via live discovery",
+      "status": "current"
+    },
+    {
+      "path": "skills/loom-ssh/SKILL.md",
+      "audience": "agent",
+      "authority": "client setup and refresh; server behavior via live discovery",
+      "status": "current"
+    },
+    {
+      "path": "skills/loom-use/SKILL.md",
+      "audience": "agent",
+      "authority": "client setup and refresh; server behavior via live discovery",
+      "status": "current"
+    }
+  ]
+}

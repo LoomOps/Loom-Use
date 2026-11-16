@@ -10,3 +10,5 @@ Tests use temporary homes and mock external Codex/Tailscale boundaries. Run
 Loom integration CI must exercise this pinned release against its real MCP server.
 Read docs/verification.md when changing a feature and update matching tests.
 No automatic daemon restart, token issuance, Job mutation or foreign-host access.
+
+Read `docs/documentation.md` for audience, Skill routing and documentation checks. Keep server contracts in the connected Loom reference; client instructions own setup and refresh only.

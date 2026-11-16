@@ -1,11 +1,8 @@
 # Loom Use
 
-User-side tools and Codex Skills for [Loom](https://github.com/LoomOps/Loom).
-Connect to a Loom server, preserve named connections, configure authentication,
-refresh Codex MCP, and follow the client release declared by that server.
+Client setup tools and agent Skills for [Loom](https://github.com/LoomOps/Loom). Connect to a server, preserve named connections, configure authentication and refresh an existing Codex session. Python 3.11+; no third-party Python packages.
 
-Give an agent this repository and the Loom address, then have it read [INSTALL.md](INSTALL.md).
-Server installation is separate. Python 3.11+; no Python package dependencies.
+For requested setup, read [INSTALL.md](INSTALL.md) and use the exact client release declared by the server. Settings live under `$CODEX_HOME/loom-use` (default `~/.codex/loom-use`), outside this checkout. Tokens use a hidden prompt.
 
 ```sh
 python3 loom_use.py connect https://loom-machine.example.ts.net
@@ -13,40 +10,18 @@ python3 loom_use.py connections list
 python3 loom_use.py connect https://second.example.ts.net:8443 --name second
 python3 loom_use.py connections use second
 python3 loom_use.py doctor
-python3 loom_use.py update
-python3 loom_use.py reconnect --thread-id CURRENT_THREAD_ID
 ```
 
-Tokens are entered only in a hidden interactive prompt. Settings live under
-`$CODEX_HOME/loom-use` (default `~/.codex/loom-use`), not in this checkout.
-See [connections](docs/connections.md), [updates](docs/updates.md),
-[verification](docs/verification.md), and [developer guide](AGENTS.md).
-Server action schemas and operational guides come from `system.describe` and
-`system.guide`; this package is not a second source of server contracts.
+| Task | Reference |
+|---|---|
+| Install or verify this client | [Installation](INSTALL.md) |
+| Switch, repair or disconnect | [Connections](docs/connections.md) |
+| Apply a server-declared client release | [Updates](docs/updates.md) |
+| Read/transfer host files or author drafts | [Optional SSH](docs/ssh.md) |
+| Interpret local diagnostics | [Diagnostics](docs/diagnostics.md) |
+| Change the client | [Implementation](clients/README.md), [developer instructions](AGENTS.md), [verification](docs/verification.md) |
+| Maintain these documents and Skills | [Documentation contract](docs/documentation.md), [inventory](docs/documentation-catalog.json) |
 
-License: GPL-3.0. See LICENSE and THIRD_PARTY_NOTICES.md.
+Server concepts, action schemas and task workflows come from `system.guide` and `system.describe`; see the [Loom reference](https://github.com/LoomOps/Loom/blob/main/docs/README.md) for the source documentation. This client has no alternate Job schema and does not install frameworks, compilers or server updates on connection.
 
-Optional host file analysis and component authoring use [Loom SSH](docs/ssh.md).
-Install it with `python3 loom_use.py ssh install`, inspect with `ssh info`, and
-verify remote access with `ssh doctor`. Same-host mode uses local files without SSH.
-
-The Dashboard groups Profiles, Components, Tools and Runtimes in the Runtimes workspace. A Component owns a Job lifecycle, a Tool is research software called
-inside a Job, and a Profile pins their versions and execution environment. The MCP
-group is still named `components`; discover its Tool/Profile actions from the server.
-
-A Job represents one requested outcome. Physical batches and vectorized work
-belong inside that Job by default. The connected server's Job guide specifies
-internal progress and explicit consolidation of preserved prior execution.
-
-Runtime discovery and installation guidance are supplied by the connected server.
-Profiles select exact execution-environment revisions. The client forwards the
-current components.runtimes/get_runtime actions without adding another MCP server.
-Host installation is explicitly authorized administrator work and always uses the
-installation-configured dependency directory; client setup/update does not build
-images, install research frameworks or rewrite Job pins.
-
-
-New Component/Tool/Job orchestration defaults to Rust. External scientific SDKs may
-remain in explicit pinned Python worker stages. Rust authoring/build and versioned
-Scenario guidance are discovered from the connected server; this client does not
-install a compiler or change accepted source/Profile/Runtime pins on connection.
+License: GPL-3.0-only. See LICENSE and THIRD_PARTY_NOTICES.md.

@@ -20,6 +20,3 @@ Personal Component/Tool/Profile sources are editable drafts. Register them with
 Loom MCP; do not change immutable runtime revisions. Shared storage permissions are
 configured on the host separately. Disabling SSH retains the home and does not cancel
 Jobs. Updating Loom Use preserves optional Skill selection and connection profiles.
-
-The Dashboard groups Profiles, Components, Tools and Runtimes in the Runtimes workspace. This label does not rename
-the `components` MCP group or change immutable revision and Profile pin semantics.
