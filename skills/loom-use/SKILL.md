@@ -16,6 +16,7 @@ For a working connection, call `system.status` to confirm the destination and pe
 | Choose or install an environment | `runtimes` |
 | Publish or reconnect outputs | `results` (or `jobs`) |
 | Choose or extend an output format | `metadata` (or `results` on older servers) |
+| Plan scientific evidence or report a hypothesis | `reporting`; use `jobs.preview_outcome` when advertised |
 | Reuse a Dataset or publish a derived variant | `results`, then the exact lineage action schema |
 | Find files and logs | `items` |
 | Analyze output bytes or large archives | `items`, then optional `loom-ssh` with an existing local/SSH grant |
@@ -23,7 +24,7 @@ For a working connection, call `system.status` to confirm the destination and pe
 | Recover an error | `recovery` |
 | Pin task/protocol context | `scenarios` |
 
-Keep the original accepted request and stable key after an uncertain response; retain the returned Job ID. One requested outcome normally maps to one logical Job with internal batches or a workflow. Reuse compatible exact Profiles before creating new revisions. Client or guide updates never repin existing Jobs. Event ACK records receipt; `recovery.claim` acquires a repair lease.
+Keep the original accepted request and stable key after an uncertain response; retain the returned Job ID. One requested outcome normally maps to one logical Job with producer-reported Steps or independently scheduled workflow Nodes. When the server advertises `jobs.create`, reserve the outcome before Runtime installation, then bind the open slot on the same ID with `jobs.revise_plan`. See the connected workflows guide. Select a compatible Profile for each execution. Its Stage runners select the environments. Reuse compatible exact Profiles before creating new revisions. Client or guide updates never repin existing Jobs. Event ACK records receipt; `recovery.claim` acquires a repair lease.
 For a follow-up serving the same outcome, preserve the existing Main Job and follow the server `workflows` guide. Presentation grouping is distinct from workflow execution membership; keep exact execution ownership and failure history.
 
 Compare response `_meta.loom` / onboarding revisions after reconnect or a version change. Refresh changed guides and schemas. Missing guide IDs on older servers are a reason to use that server's index, not invent newer fields.
