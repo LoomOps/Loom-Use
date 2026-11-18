@@ -80,6 +80,7 @@ class Connection:
         while True:
             response=self.read(deadline)
             if not isinstance(response,dict):raise ValueError('Invalid RPC response')
-            if response.get('id')==identity:
+            response_id=response.get('id')
+            if type(response_id) is type(identity) and response_id==identity:
                 if 'error' in response:raise ValueError('App server rejected request')
                 return response['result']

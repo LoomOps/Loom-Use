@@ -9,6 +9,13 @@ from urllib.request import Request, build_opener, HTTPRedirectHandler
 LIMIT = 2 * 1024 * 1024
 
 
+def same_id(reply, request):
+    if not isinstance(reply, dict) or 'id' not in reply or 'id' not in request:
+        return False
+    actual, expected = reply['id'], request['id']
+    return type(actual) is type(expected) and actual == expected
+
+
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
@@ -49,15 +56,15 @@ class OpsTransport:
                 data='\n'.join(line[5:].lstrip(' ') for line in event.split('\n') if line.startswith('data:'))
                 if data:
                     item=json.loads(data)
-                    if isinstance(item,dict) and item.get('id')==message.get('id') and ('result' in item or 'error' in item):replies.append(item)
+                    if same_id(item, message) and ('result' in item or 'error' in item):replies.append(item)
             if len(replies)!=1:raise ValueError('Expected exactly one MCP response')
             reply=replies[0]
         elif media=='application/json':
             reply=json.loads(content)
         else:
             raise ValueError('Unexpected MCP response type')
-        if (not isinstance(reply,dict) or reply.get('jsonrpc')!='2.0' or 'id' not in message
-                or reply.get('id')!=message['id'] or ('result' in reply)==('error' in reply)):
+        if (not isinstance(reply,dict) or reply.get('jsonrpc')!='2.0'
+                or not same_id(reply, message) or ('result' in reply)==('error' in reply)):
             raise ValueError('Invalid MCP response envelope')
         if message.get('method')=='initialize' and 'result' in reply:
             self.protocol_version=reply['result']['protocolVersion']

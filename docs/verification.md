@@ -28,17 +28,15 @@ Release workflow: test client, build deterministic ZIP, publish Loom Use first,
 then update Loom's pinned client-release.json and run cross-repository tests before
 publishing Loom. Source-only edits do not change an installed client automatically.
 
-Codex control sockets use WebSocket-over-Unix, not JSONL. The integration fixture
-performs the real HTTP Upgrade and rejects unmasked frames. No fake JSONL executable
-stands in for the transport. Actual runtime verification still requires the chosen
-thread to report connected and complete both system.status and system.guide.
-Refreshing an existing control socket does not require a `codex` executable on PATH.
+Codex refresh verifies the chosen thread with `system.status` and `system.guide`.
+The socket fixture performs the HTTP WebSocket Upgrade and checks frame masking.
+An existing control socket can be refreshed without a `codex` executable on PATH.
 
 ## Evidence boundaries
 
 The tests exercise private temporary homes, real Unix WebSocket framing and mock external service boundaries. Server schemas, Rust producer behavior, Runtime/GPU acceptance and actual agent Profile reuse are verified in Loom or call-history review, not inferred from these client tests.
 
-The generic transport preserves large decimal-string IDs, exact revision selectors, opaque cursors, errors and revision metadata. Setup/update does not execute Cargo, migrations, Jobs or server installation. The local cache receipt detects changes within the current OS user's trust boundary; it is not a signature against that user rewriting the entire cache.
+The generic transport preserves large decimal-string IDs, exact revision selectors, opaque cursors, errors and revision metadata. Response IDs must match without Boolean or numeric coercion. Setup/update does not execute Cargo, migrations, Jobs or server installation. The local cache receipt detects changes within the current OS user's trust boundary; it is not a signature against that user rewriting the entire cache.
 
 Review [documentation](documentation.md) separately: check local links, Skill metadata, task routing and the guide's ownership of server contracts. A wording check is not proof that an agent followed the instructions.
 

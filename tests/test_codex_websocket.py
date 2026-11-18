@@ -48,6 +48,8 @@ class Server:
      elif m['method']=='mcpServer/tool/call':r={'isError':self.mode=='tool_error','content':[{'type':'text','text':'{}'}]}
      else:r={}
      response={'id':m['id'],'result':r}
+     if self.mode=='coerced_id' and m['id']==1:
+      frame({'id':True,'error':{'message':'not this request'}})
      if self.mode=='fragmented':
       frame({'method':'notification','params':{}})
       raw=json.dumps(response).encode();frame(raw[:7],fin=False);frame(b'ping',9);frame(raw[7:],0)
@@ -68,7 +70,7 @@ class WebSocketTests(unittest.TestCase):
    self.assertFalse(server.errors,server.errors)
    return result,server.methods
  def test_upgrade_masking_and_actual_thread_calls(self):
-  for mode in ('normal','fragmented'):
+  for mode in ('normal','fragmented','coerced_id'):
    result,methods=self.exercise(mode)
    self.assertEqual(result['status'],'verified')
    self.assertEqual(methods.count('mcpServer/tool/call'),2)
