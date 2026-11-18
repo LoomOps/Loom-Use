@@ -21,11 +21,23 @@ jobs:
           python-version: '3.12'
       - run: python3 -m pip install jsonschema==4.23.0 PyYAML==6.0.2
       - run: rustup toolchain install 1.100.0 --profile minimal
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: .server
+      - name: Record resolved server revision
+        run: git -C .server rev-parse HEAD > /tmp/server-commit.txt
       - name: Test this client artifact with the selected server
         run: |
           python3 package.py --output /tmp/client
           cp /tmp/client/client-release.json .server/loom_use/client-release.json
           cd .server
           python3 deploy/client_release.py --destination /tmp/contract --archive /tmp/client/loom-use-*.zip
-          cargo +1.100.0 build --workspace --locked
+          cargo +1.100.0 build -p loom-ops -p loom-sdk --locked
           LOOM_USE_TEST_CACHE=/tmp/contract PYTHONPATH=tests/rust python3 -m unittest test_service.RustServiceTests.test_reference_packaged_client_uses_real_native_mcp -v
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: server-client-identity
+          path: |
+            /tmp/server-commit.txt
+            /tmp/client/client-release.json

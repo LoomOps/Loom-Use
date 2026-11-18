@@ -280,3 +280,11 @@ class PreflightTests(unittest.TestCase):
    with patch.object(use.tempfile,'TemporaryFile',side_effect=PermissionError('denied')),patch.object(client,'probe') as probe:
     with self.assertRaisesRegex(PermissionError,'grant access'):client.connect('https://example.test',cwd=root)
    probe.assert_not_called();self.assertEqual(client.config.read_text(),'model="kept"\n')
+
+class PackageNoopTests(unittest.TestCase):
+ def test_unchanged_package_preserves_output_mtimes(self):
+  with tempfile.TemporaryDirectory() as directory:
+   output=Path(directory);first=package.build(output)
+   before={p.name:p.stat().st_mtime_ns for p in output.iterdir()}
+   self.assertEqual(first,package.build(output))
+   self.assertEqual(before,{p.name:p.stat().st_mtime_ns for p in output.iterdir()})

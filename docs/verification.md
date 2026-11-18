@@ -41,3 +41,7 @@ The tests exercise private temporary homes, real Unix WebSocket framing and mock
 The generic transport preserves large decimal-string IDs, exact revision selectors, opaque cursors, errors and revision metadata. Setup/update does not execute Cargo, migrations, Jobs or server installation. The local cache receipt detects changes within the current OS user's trust boundary; it is not a signature against that user rewriting the entire cache.
 
 Review [documentation](documentation.md) separately: check local links, Skill metadata, task routing and the guide's ownership of server contracts. A wording check is not proof that an agent followed the instructions.
+
+Packaging publishes the normalized ZIP and descriptor atomically. Identical inputs
+preserve output bytes and mtimes; packaging does not need Rust. Server-contract CI
+records the resolved server commit and tests the exact client archive.
