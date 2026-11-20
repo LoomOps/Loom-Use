@@ -14,7 +14,7 @@ Use this procedure for requested client setup on the selected agent machine and 
 
    Alternatively pass `--cwd /existing/project`. This supplies Skill-refresh context; it does not limit MCP scope or create a project. Add `--name NAME` for another connection.
 4. Use the configured authentication method. A verified user-owned Tailscale device can use `--authentication tailscale`. Resident/tagged clients need an Admin-issued Loom Agent Token entered in the hidden prompt. Do not infer a person's identity from an OS username or reuse server management credentials.
-5. The command verifies the server, selects its exact client release, installs the Skill, registers Streamable HTTP and attempts to refresh the existing Codex app-server. Run `doctor` for the resulting configuration, then call `system.status` and `system.guide` through this chat's actual MCP tools when available.
+5. The command verifies the server, installs its declared release and Skill, registers Streamable HTTP and attempts to refresh the existing Codex app-server. Verify with `system.status` and `system.guide` through this chat's MCP tools when available. Use `doctor` when the setup result leaves configuration or transport unresolved.
 
 Report three results separately: local configuration, server transport and active-chat MCP calls. A standalone transport or cached tool catalog does not prove active-chat readiness. Installation and refresh do not require a thread ID. Optional `--thread-id` defaults to `CODEX_THREAD_ID` and verifies that chat only; it is never saved in a profile. Do not invent another thread to complete verification.
 

@@ -11,11 +11,9 @@ UTC epoch timestamp, component, operation, code, build, exception class/errno an
 up to 12 basename/function/line frames. No exception messages, source lines,
 locals, request bodies, credentials, URLs or user identities are stored.
 
-There is no network sender or automatic upload. A future development-server
-collector can consume this schema independently. Read-only/full disks, lock
-contention and invalid paths do not change the original operation's result.
-A pending refresh is not an installation failure; actual current-chat tool calls
-remain the readiness check. Records are best-effort diagnostics, not an audit log.
+Records stay on the client. Collection is best effort and preserves the original
+operation's result when the diagnostics path is unavailable. Use actual MCP calls
+in the current chat to verify readiness after a pending refresh.
 
 Set `LOOM_DIAGNOSTICS_SEGMENT_MIB` and `LOOM_DIAGNOSTICS_BACKUPS` in the client
 environment to adjust retention. Invalid values use defaults; no space is preallocated.

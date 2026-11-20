@@ -8,7 +8,7 @@ changing the server. All commands accept `--name NAME`.
 
 Same-host detection compares local Tailscale addresses with authenticated server
 metadata. It never assumes that a hostname or the current Linux username establishes
-identity. Same-host agents use local tools; MCP keeps its existing token authentication.
+identity. Same-host agents use local tools with the current OS account. MCP keeps its configured authentication.
 When detection cannot establish locality, do not infer it or bypass SSH authentication.
 
 Existing manually configured SSH connections remain usable without provisioning.

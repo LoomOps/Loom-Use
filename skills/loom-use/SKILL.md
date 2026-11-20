@@ -5,36 +5,22 @@ description: Use Loom MCP to discover software, create or inspect Jobs and resul
 
 # Loom Use
 
-For a working connection, call `system.status` to confirm the destination and permissions. Read `system.guide` for the guide index, then load only the topic needed for the task. Use `system.describe({group})` for an action index and `{group,action}` for exact inputs. The connected server, not a cached Skill, defines available features.
+Confirm the destination and permissions with `system.status`. Use `system.guide` for task routes and `system.describe({group,action})` for exact inputs. Follow the connected server's advertised actions and guides.
 
 | Task | Server guide |
 |---|---|
-| First Job | `quickstart` |
-| Submit, inspect or control execution | `jobs` |
-| One outcome with multiple stages or prior runs | `workflows` (or `jobs` on older servers) |
-| Reuse or create software | `components`, then `authoring` when writing source |
-| Choose or install an environment | `runtimes` |
-| Publish or reconnect outputs | `results` (or `jobs`) |
-| Choose or extend an output format | `metadata` (or `results` on older servers) |
-| Plan scientific evidence or report a hypothesis | `reporting`; use `jobs.preview_outcome` when advertised |
-| Reuse a Dataset or publish a derived variant | `results`, then the exact lineage action schema |
-| Find files and logs | `items` |
-| Analyze output bytes or large archives | `items`, then optional `loom-ssh` with an existing local/SSH grant |
-| Reconcile selected existing assets | `reconciliation` (or `items`) |
-| Recover an error | `recovery` |
-| Pin task/protocol context | `scenarios` |
+| Submit a research outcome or supporting Unit | `jobs`, then the relevant `job-cases` or `job-intake-cases` example |
+| Inspect, control or recover execution | `jobs`, `job-control-cases` or `recovery` for the operation |
+| Reuse a Profile or author software | `components`; `authoring` for source or `runtimes` for environments |
+| Register, publish or supplement scientific results | `catalog-cases`; `metadata` or `reporting` for the contract |
+| Read files or repair their bindings | `items` for reads and `reconciliation` for selected assets |
 
-Keep the original accepted request and stable key after an uncertain response; retain the returned Job ID. One requested outcome normally maps to one logical Job with producer-reported Steps or independently scheduled workflow Nodes. When the server advertises `jobs.create`, reserve the outcome before Runtime installation, then bind the open slot on the same ID with `jobs.revise_plan`. See the connected workflows guide. Select a compatible Profile for each execution. Its Stage runners select the environments. Reuse compatible exact Profiles before creating new revisions. Client or guide updates never repin existing Jobs. Event ACK records receipt; `recovery.claim` acquires a repair lease.
-For a follow-up serving the same outcome, preserve the existing Main Job and follow the server `workflows` guide. Presentation grouping is distinct from workflow execution membership; keep exact execution ownership and failure history.
+Use exact reads for progress and completed-result comparisons. Before submitting, resolve required inputs from the request, exact prior records and current Profile defaults. Ask about required choices still unresolved. Use a stable key to replay an uncertain submission. Follow `workflows` for plans and `results` for publication, imported data and Dataset lineage. Before choosing an output format, inspect the closest comparable record and its exact template.
 
-Compare response `_meta.loom` / onboarding revisions after reconnect or a version change. Refresh changed guides and schemas. Missing guide IDs on older servers are a reason to use that server's index, not invent newer fields.
-
-Before publishing an output, find the most comparable existing record and inspect its exact metadata/template revision. Reuse a compatible registered format, or extend it when field coverage is missing. Copy structure rather than values or acceptance claims; follow the connected server guide for robot-first labels and unknown fields.
-
-Before creating a Dataset variant, find the existing parent and retain its exact reference. Follow the server guide to distinguish relocation, condition selection, partial reuse and new data generation. Shared Task membership and general input consumption do not establish derivation. Publish typed output facts; do not fill missing research fields or write generic Overview prose.
+After reconnect or an installation change, refresh guides and schemas whose revision changed. Follow older servers' own guide index.
 
 ## Client tasks
 
-The client root is two directories above this installed Skill. Read its `INSTALL.md` for requested initial setup, `docs/connections.md` for switching/repair, and `docs/updates.md` for a declared client-release change. A working Job task does not require reinstalling or running a full doctor. Preserve named connections and keep credentials private to their endpoint.
+Resolve the client root two directories above this Skill. Read `INSTALL.md` for requested setup, `docs/connections.md` for connection changes, or `docs/updates.md` for a server-declared client update. Verify active-chat readiness with calls through this chat's MCP tools.
 
-Report configuration, transport and this chat's MCP readiness separately. Use actual tool results; unavailable app refresh tools do not establish runtime readiness. File discovery stays in MCP; use local/SSH tools for large-file inspection and short CPU summaries. The optional `loom-ssh` Skill resolves registered File IDs and checks the chosen host Python. A missing client helper does not require repairing a working MCP connection: follow the server `items` guide and an existing authorized route. Server administration and global reconciliation require their own requested scope.
+For host file work, use the server's `items` guide and an existing local or SSH grant. The optional `loom-ssh` Skill covers File resolution and host probes.

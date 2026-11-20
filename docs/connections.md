@@ -30,8 +30,6 @@ runtime failures. ENOENT during helper startup is not evidence of a bad token.
 A failed refresh reports its stage and reason; it does not establish that the control
 API is absent. Use an available agent-accessible MCP Restart action before asking
 the user to restart it, then verify actual tool calls. A fresh standalone app-server is not the active user's session.
-
-
 `--cwd` defaults to the process working directory, not an automatically discovered
 Codex project. Use an existing project explicitly when invoking the script from
 an installation directory. It supplies the Skills refresh context, not a directory
