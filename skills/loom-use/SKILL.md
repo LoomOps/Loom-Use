@@ -21,7 +21,7 @@ For a failed run, open the connected server's `recovery` guide and verify the ex
 
 After reconnect or an installation change, refresh guides and schemas whose revision changed. Follow older servers' own guide index.
 
-When the user enables Agent Workflows, follow the installed client's `docs/agent-workflows.md`. Delegate new code and plan preparation to `loom-job-entry` when it helps, or use the specialized profiles for independent work. Keep Job submission with the parent. For a registered long follow-up, let the observer re-enter this parent instead of keeping a Codex turn waiting.
+When Agent Workflows is enabled, start delegation early. Before writing or verifying new producer code, a new or changed Profile, or a new or changed Unit plan, hand preparation to `loom-job-entry`. For substantive analysis, delegate independent evidence checks to the relevant specialist roles as soon as their scopes are clear. Read `docs/agent-workflows.md` for role selection. Keep simple lookups, Job submission and final decisions with the parent. If delegation is unavailable, state the limitation and continue within the authorized scope. Let Loom execute registered work and let the observer re-enter the parent for long follow-ups.
 
 ## Client tasks
 
