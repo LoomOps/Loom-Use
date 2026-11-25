@@ -32,6 +32,12 @@
       "status": "current"
     },
     {
+      "path": "docs/agent-workflows.md",
+      "audience": "reader",
+      "authority": "client setup and refresh; server behavior via live discovery",
+      "status": "current"
+    },
+    {
       "path": "docs/connections.md",
       "audience": "reader",
       "authority": "client setup and refresh; server behavior via live discovery",

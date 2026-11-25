@@ -16,6 +16,7 @@ python3 loom_use.py doctor
 |---|---|
 | Install or verify this client | [Installation](INSTALL.md) |
 | Switch, repair or disconnect | [Connections](docs/connections.md) |
+| Configure optional Codex roles and Job follow-ups | [Agent Workflows](docs/agent-workflows.md) |
 | Apply a server-declared client release | [Updates](docs/updates.md) |
 | Resolve/analyze host files, transfer selected files or author drafts | [Optional SSH](docs/ssh.md) |
 | Interpret local diagnostics | [Diagnostics](docs/diagnostics.md) |

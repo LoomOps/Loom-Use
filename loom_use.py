@@ -15,6 +15,7 @@ from stdio import NoRedirect
 import releases, codex_runtime, diagnostics
 import ssh as ssh_client
 import file_access
+from agent_workflows import commands as workflow_commands
 
 
 def endpoint(value):
@@ -353,6 +354,7 @@ def main():
     ssh.add_argument('--ssh-target',help='Explicit existing manual SSH route USER@HOST; no grant or key is created')
     ssh.add_argument('--ssh-port',type=int,default=22)
     connections=sub.add_parser('connections');connections.add_argument('operation',choices=['list','use','disconnect']);connections.add_argument('name',nargs='?')
+    workflow_commands.register(sub.add_parser('workflows',help='Optional Codex Job follow-up and agent profiles'))
     a=parser.parse_args()
     if a.action=='ssh':
         if a.operation=='resolve' and not a.file_id:parser.error('ssh resolve requires a File ID')
@@ -363,6 +365,11 @@ def main():
     global ERROR_DIRECTORY
     ERROR_DIRECTORY=Path(a.home or os.environ.get('CODEX_HOME',Path.home()/'.codex'))/'loom-use/diagnostics'
     client=Client(a.home,a.skill_root)
+    if a.action=='workflows':
+        result=workflow_commands.execute(client,a,ROOT/'loom_use.py')
+        if result is not None:
+            print(json.dumps(result,indent=2))
+        return 0
     with client.lock():
         if a.action=='connect':
             try:result=client.connect(a.url,a.name,authentication=a.authentication,cwd=a.cwd,thread_id=a.thread_id)
@@ -384,6 +391,8 @@ def main():
         elif a.operation=='use':result=client.use(a.name,Path.cwd(),os.environ.get('CODEX_THREAD_ID'))
         else:
             result=client.disconnect(a.name)
+    if a.action in ('doctor','reconnect','update'):
+        result['agent_workflows']=workflow_commands.summary(client,result.get('connection'),verify_models=True)
     print(json.dumps(result,indent=2))
     return 0
 

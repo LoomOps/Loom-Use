@@ -12,3 +12,8 @@ ssh.py discovers optional personal access and preserves local storage metadata.
 file_access.py composes existing MCP metadata into a File access plan and runs
 only an explicitly requested read-only local/SSH probe; it does not transfer file
 bytes through MCP, provision accounts, install interpreters or mutate Jobs.
+
+`agent_workflows/` is an optional client module. It keeps role configuration,
+the local continuation journal, Loom observation, and the Codex transport
+separate. The observer performs Loom reads and delivers structured follow-ups
+to a selected existing parent through its control socket.

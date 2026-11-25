@@ -22,8 +22,8 @@ class NoRedirect(HTTPRedirectHandler):
 
 
 class OpsTransport:
-    def __init__(self, config_path):
-        config = json.loads(config_path.read_text())
+    def __init__(self, config_path=None, *, profile=None):
+        config = profile if profile is not None else json.loads(config_path.read_text())
         self.endpoint = config['endpoint']
         url = urlsplit(self.endpoint)
         if (url.path != '/mcp' or url.username or url.password or url.query or url.fragment

@@ -17,7 +17,11 @@ Confirm the destination and permissions with `system.status`. Use `system.guide`
 
 Use exact reads for progress and completed-result comparisons. Before submitting, resolve required inputs from the request, exact prior records and current Profile defaults. Ask about required choices still unresolved. Use a stable key to replay an uncertain submission. Follow `workflows` for plans and `results` for publication, imported data and Dataset lineage. Before choosing an output format, inspect the closest comparable record and its exact template.
 
+For a failed run, open the connected server's `recovery` guide and verify the exact Unit, Attempt and failed stage before resuming. Use the advertised recovery preview when available.
+
 After reconnect or an installation change, refresh guides and schemas whose revision changed. Follow older servers' own guide index.
+
+When the user enables Agent Workflows, follow the installed client's `docs/agent-workflows.md`. Delegate new code and plan preparation to `loom-job-entry` when it helps, or use the specialized profiles for independent work. Keep Job submission with the parent. For a registered long follow-up, let the observer re-enter this parent instead of keeping a Codex turn waiting.
 
 ## Client tasks
 

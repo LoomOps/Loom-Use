@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "roles": {
+    "manager": {"model": "gpt-6.2-sol", "effort": "low"},
+    "job-entry": {"model": "gpt-6.2-sol", "effort": "high"},
+    "history": {"model": "gpt-6.2-sol", "effort": "low"},
+    "experiment-analysis": {"model": "gpt-6.2-sol", "effort": "medium"},
+    "runtime-diagnosis": {"model": "gpt-6.2-sol", "effort": "medium"},
+    "output-review": {"model": "gpt-6.2-sol", "effort": "medium"},
+    "performance-analysis": {"model": "gpt-6.2-sol", "effort": "medium"},
+    "experiment-design": {"model": "gpt-6.2-sol", "effort": "high"},
+    "simulation-diagnosis": {"model": "gpt-6.2-sol", "effort": "high"}
+  }
+}
